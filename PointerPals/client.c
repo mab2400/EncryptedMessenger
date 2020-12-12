@@ -15,6 +15,8 @@
  *
  */
 
+// Bellovin's Sample Code
+
 int
 main(int argc, char *argv)
 {
