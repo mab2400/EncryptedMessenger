@@ -131,8 +131,8 @@ int main()
     int servsock_pass, servsock_cert;
     const char *msg = "Hello world!\n";
 
-    ctx = create_ssl_ctx();
     ssl_load();
+    ctx = create_ssl_ctx();
 
     servsock_pass = create_server_socket(PASS_PORT);
     servsock_cert = create_server_socket(CERT_PORT);
