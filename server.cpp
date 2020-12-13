@@ -127,7 +127,7 @@ void my_select(int servsock_pass, int servsock_cert, fd_set *read_fds) {
 int main()
 {
     SSL *ssl;
-	SSL_CTX *ctx;
+    SSL_CTX *ctx;
     int servsock_pass, servsock_cert;
     const char *msg = "Hello world!\n";
 
