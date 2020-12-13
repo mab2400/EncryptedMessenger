@@ -1,5 +1,6 @@
 CC=g++
 CXXFLAGS=-g -Wall -std=c++17
+LDLIBS=-lssl -lcrypto
 
 ALL_PROGRAMS=server getcert changepw sendmsg recvmsg
 
