@@ -37,7 +37,7 @@ void ssl_load()
 SSL_CTX *create_ssl_ctx()
 {
     SSL_CTX *ctx;
-	const SSL_METHOD *method;
+    const SSL_METHOD *method;
     
     method = TLS_server_method();
     ctx = SSL_CTX_new(method);
