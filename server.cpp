@@ -88,7 +88,7 @@ void ssl_client_cleanup(SSL *ssl)
 
 SSL *ssl_client_accept(SSL_CTX *ctx, int servsock, int should_verify_client_cert)
 {
-	SSL *ssl;
+    SSL *ssl;
     int clntsock;
     struct sockaddr_in clntaddr;
     socklen_t clntlen = sizeof(clntaddr);
