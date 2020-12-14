@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstring>
+#include <csignal>
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -13,9 +14,19 @@
 #define  PASS_PORT  25565   // client auth using username/password
 #define  CERT_PORT  443     // client auth using certificate
 
+#define  BUFSIZE    4096
+
 #define  CA_CERT      "../rootca/intermediate/certs/intermediate.cert.pem"
 #define  SERVER_CERT  "../rootca/intermediate/certs/server.cert.pem"
 #define  SERVER_KEY   "../rootca/intermediate/private/server.key.pem"
+
+static int should_exit = 0;
+
+struct client_ctx {
+    SSL *ssl;
+    BIO *ssl_bio;
+    BIO *buf_io;
+};
 
 void die(const char *msg)
 {
@@ -25,6 +36,11 @@ void die(const char *msg)
         fprintf(stderr, "%s\n", msg);
     ERR_print_errors_fp(stderr);
     exit(1);
+}
+
+void intHandler(int unused) 
+{
+    should_exit = 1;
 }
 
 void ssl_load()
@@ -79,41 +95,54 @@ int create_server_socket(int port)
     return servsock;
 }
 
-void ssl_client_cleanup(SSL *ssl)
+void ssl_client_cleanup(struct client_ctx *cctx)
 {
-    int clntsock = SSL_get_fd(ssl);
-    SSL_free(ssl);
-    close(clntsock);
+    BIO_flush(cctx->buf_io);
+    BIO_free_all(cctx->buf_io);
+    
+    SSL_shutdown(cctx->ssl);
+    close(SSL_get_fd(cctx->ssl));
+    SSL_free(cctx->ssl);
 }
 
-SSL *ssl_client_accept(SSL_CTX *ctx, int servsock, int should_verify_client_cert)
+int ssl_client_accept(struct client_ctx *cctx,
+                      SSL_CTX *ssl_ctx,
+                      int servsock, 
+                      int should_verify_client_cert)
 {
-    SSL *ssl;
     int clntsock;
     struct sockaddr_in clntaddr;
     socklen_t clntlen = sizeof(clntaddr);
 
     if ((clntsock = accept(servsock, (struct sockaddr *)&clntaddr, &clntlen)) < 0) {
         perror("accept() failed");
-        return NULL;
+        return -1;
     }
 
     printf("Connection from %s\n", inet_ntoa(clntaddr.sin_addr));
 
-    ssl = SSL_new(ctx);
-    SSL_set_fd(ssl, clntsock);
-    if (should_verify_client_cert)
-        SSL_set_verify(ssl, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
-    else
-        SSL_set_verify(ssl, SSL_VERIFY_NONE, NULL);
+    cctx->ssl = SSL_new(ssl_ctx);
+    SSL_set_fd(cctx->ssl, clntsock);
 
-    if (SSL_accept(ssl) <= 0) {
+    if (should_verify_client_cert)
+        SSL_set_verify(cctx->ssl, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+    else
+        SSL_set_verify(cctx->ssl, SSL_VERIFY_NONE, NULL);
+
+    if (SSL_accept(cctx->ssl) <= 0) {
+        fprintf(stderr, "SSL_accept() failed\n");
         ERR_print_errors_fp(stderr);
-        ssl_client_cleanup(ssl);
-        return NULL;
+        SSL_free(cctx->ssl);
+        close(clntsock);
+        return -1;
     }
 
-    return ssl;
+    cctx->buf_io = BIO_new(BIO_f_buffer());	            /* create a buffer BIO */
+    cctx->ssl_bio = BIO_new(BIO_f_ssl());  		        /* create an ssl BIO */
+    BIO_set_ssl(cctx->ssl_bio, cctx->ssl, BIO_NOCLOSE);	/* assign the ssl BIO to SSL */
+    BIO_push(cctx->buf_io, cctx->ssl_bio);		        /* add ssl_bio to buf_io */
+
+    return 0;
 }
 
 void my_select(int servsock_pass, int servsock_cert, fd_set *read_fds) {
@@ -126,10 +155,10 @@ void my_select(int servsock_pass, int servsock_cert, fd_set *read_fds) {
 
 int main()
 {
-    SSL *ssl;
     SSL_CTX *ctx;
     int servsock_pass, servsock_cert;
-    const char *msg = "Hello world!\n";
+
+    signal(SIGINT, intHandler);
 
     ssl_load();
     ctx = create_ssl_ctx();
@@ -137,25 +166,28 @@ int main()
     servsock_pass = create_server_socket(PASS_PORT);
     servsock_cert = create_server_socket(CERT_PORT);
 
-    while (1) {
+    while (!should_exit) {
         
         fd_set fds;
+        struct client_ctx client_ctx[1];
+
         my_select(servsock_pass, servsock_cert, &fds);
+        if (should_exit) break;
 
         if (FD_ISSET(servsock_pass, &fds) 
-            && (ssl = ssl_client_accept(ctx, servsock_pass, 0)) != NULL)
+            && ssl_client_accept(client_ctx, ctx, servsock_pass, 0) == 0)
         {
             // client auth using username/password
-            SSL_write(ssl, msg, strlen(msg));
-            ssl_client_cleanup(ssl);
+            BIO_puts(client_ctx->buf_io, "Hello world!\n");
+            ssl_client_cleanup(client_ctx);
         } 
         
-        if (FD_ISSET(servsock_cert, &fds) 
-            && (ssl = ssl_client_accept(ctx, servsock_cert, 1)) != NULL)
+        if (FD_ISSET(servsock_cert, &fds)
+            && ssl_client_accept(client_ctx, ctx, servsock_cert, 1) == 0)
         {
             // client auth using certificate
-            SSL_write(ssl, msg, strlen(msg));
-            ssl_client_cleanup(ssl);
+            BIO_puts(client_ctx->buf_io, "Hello world!\n");
+            ssl_client_cleanup(client_ctx);
         }
     
     }
