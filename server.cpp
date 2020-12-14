@@ -99,7 +99,7 @@ void ssl_client_cleanup(struct client_ctx *cctx)
 {
     BIO_flush(cctx->buf_io);
     BIO_free_all(cctx->buf_io);
-    
+
     SSL_shutdown(cctx->ssl);
     close(SSL_get_fd(cctx->ssl));
     SSL_free(cctx->ssl);
@@ -137,10 +137,10 @@ int ssl_client_accept(struct client_ctx *cctx,
         return -1;
     }
 
-    cctx->buf_io = BIO_new(BIO_f_buffer());	            /* create a buffer BIO */
-    cctx->ssl_bio = BIO_new(BIO_f_ssl());  		        /* create an ssl BIO */
-    BIO_set_ssl(cctx->ssl_bio, cctx->ssl, BIO_NOCLOSE);	/* assign the ssl BIO to SSL */
-    BIO_push(cctx->buf_io, cctx->ssl_bio);		        /* add ssl_bio to buf_io */
+    cctx->buf_io = BIO_new(BIO_f_buffer());             /* create a buffer BIO */
+    cctx->ssl_bio = BIO_new(BIO_f_ssl());               /* create an ssl BIO */
+    BIO_set_ssl(cctx->ssl_bio, cctx->ssl, BIO_NOCLOSE); /* assign the ssl BIO to SSL */
+    BIO_push(cctx->buf_io, cctx->ssl_bio);              /* add ssl_bio to buf_io */
 
     return 0;
 }
