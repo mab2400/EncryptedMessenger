@@ -90,15 +90,16 @@ int create_client_socket(int port)
     return sock;
 }
 
-/* SHOULD I MODIFY THIS? */
-void ssl_client_cleanup(struct client_ctx *cctx)
+/* NOT SURE IF I SHOULD HAVE THIS? */
+void ssl_server_cleanup(struct server_ctx *sctx)
 {
-    BIO_flush(cctx->buf_io);
-    BIO_free_all(cctx->buf_io);
+    BIO_flush(sctx->buf_io);
+    BIO_free_all(sctx->buf_io);
 
-    SSL_shutdown(cctx->ssl);
-    close(SSL_get_fd(cctx->ssl));
-    SSL_free(cctx->ssl);
+    /* Wouldn't really make sense to close the server connection. */
+    // SSL_shutdown(sctx->ssl);
+    // close(SSL_get_fd(sctx->ssl));
+    SSL_free(sctx->ssl);
 }
 
 int ssl_client_connect(struct server_ctx *sctx,
@@ -166,6 +167,7 @@ int main()
         
         fd_set fds;
         struct server_ctx server_ctx[1];
+        char rbuf[BUFSIZE];
 
         my_select(clntsock_pass, clntsock_cert, &fds);
         if (should_exit) break;
@@ -173,24 +175,21 @@ int main()
         if (FD_ISSET(clntsock_pass, &fds) 
             && ssl_client_connect(server_ctx, ctx, clntsock_pass, 0) == 0)
         {
-            // TODO: FIX THIS TO BE CLIENT
             // TODO: Should I make it ssl_server_cleanup? What do we need to clean up?
             // Should NOT verify server cert
-            // TODO: Make this line BIO_gets instead of BIO_puts.
-            // Do the same for the next if-block.
 
-            BIO_gets(client_ctx->buf_io, "Hello world!\n");
-            // BIO_puts(client_ctx->buf_io, "Hello world!\n");
-            ssl_client_cleanup(client_ctx);
+            BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
+            ssl_server_cleanup(server_ctx);
         } 
         
         if (FD_ISSET(clntsock_cert, &fds)
-            && ssl_client_accept(server_ctx, ctx, clntsock_cert, 1) == 0)
+            && ssl_client_connect(server_ctx, ctx, clntsock_cert, 1) == 0)
         {
             // client auth using certificate
+            // TODO: Should I send over the client certificate right here?
             // Should verify server cert
-            BIO_puts(server_ctx->buf_io, "Hello world!\n");
-            ssl_client_cleanup(client_ctx);
+            BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
+            ssl_server_cleanup(server_ctx);
         }
     
     }
