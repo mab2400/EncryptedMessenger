@@ -155,13 +155,15 @@ void my_select(int servsock_pass, int servsock_cert, fd_set *read_fds) {
 
 int main()
 {
+    // Source: http://h30266.www3.hpe.com/odl/axpos/opsys/vmsos84/BA554_90007/ch04s03.html
+
     SSL_CTX *ctx;
     int servsock_pass, servsock_cert;
 
     signal(SIGINT, intHandler);
 
     ssl_load();
-    ctx = create_ssl_ctx();
+    ctx = create_ssl_ctx(); 
 
     servsock_pass = create_server_socket(PASS_PORT);
     servsock_cert = create_server_socket(CERT_PORT);
@@ -178,6 +180,7 @@ int main()
             && ssl_client_accept(client_ctx, ctx, servsock_pass, 0) == 0)
         {
             // client auth using username/password
+            // Server sends "Hello world" to the client
             BIO_puts(client_ctx->buf_io, "Hello world!\n");
             ssl_client_cleanup(client_ctx);
         } 
