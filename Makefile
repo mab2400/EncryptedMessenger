@@ -2,7 +2,7 @@ CC=g++
 CXXFLAGS=-g -Wall -std=c++17
 LDLIBS=-lssl -lcrypto
 
-ALL_PROGRAMS=server getcert changepw sendmsg recvmsg
+ALL_PROGRAMS=server getcert changepw sendmsg recvmsg client
 
 .PHONY: default
 default: $(ALL_PROGRAMS)
@@ -16,6 +16,8 @@ changepw:
 sendmsg:
 
 recvmsg:
+
+client:
 
 .PHONY: clean
 clean:
