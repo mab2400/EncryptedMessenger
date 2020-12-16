@@ -111,7 +111,7 @@ int ssl_client_connect(struct server_ctx *sctx,
     struct sockaddr_in servaddr;
     socklen_t servlen = sizeof(servaddr);
 
-    if ((connect(clntsock, (struct sockaddr *)&servaddr, &servlen)) < 0) {
+    if ((connect(clntsock, (struct sockaddr *)&servaddr, servlen)) < 0) {
         perror("connect() failed");
         return -1;
     }
