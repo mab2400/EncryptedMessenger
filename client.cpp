@@ -76,13 +76,13 @@ SSL_CTX *create_ssl_ctx()
 
 int create_client_socket(int port)
 {
-    struct sockaddr_in servaddr;
+    struct sockaddr_in addr;
     int sock;
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         die("socket() failed");
     
-    memset(&servaddr, 0, sizeof(servaddr));
+    memset(&addr, 0, sizeof(addr));
     addr.sin_family      = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port        = htons(port);
