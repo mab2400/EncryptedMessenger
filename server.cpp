@@ -81,13 +81,15 @@ int create_server_socket(int port)
     if ((servsock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         die("socket() failed");
     
+    fprintf(stderr, "Socket created\n");
+
     memset(&addr, 0, sizeof(addr));
     addr.sin_family      = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port        = htons(port);
     
     if (bind(servsock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
-        die("bind() failed");
+        die("HI bind() failed");
     
     if (listen(servsock, 5) < 0)
         die("listen() failed");
@@ -157,6 +159,7 @@ int main()
 {
     // Source: http://h30266.www3.hpe.com/odl/axpos/opsys/vmsos84/BA554_90007/ch04s03.html
 
+    fprintf(stdout, "DOES THIS PRINT?\n");
     SSL_CTX *ctx;
     int servsock_pass, servsock_cert;
 
@@ -165,8 +168,13 @@ int main()
     ssl_load();
     ctx = create_ssl_ctx(); 
 
+    fprintf(stderr, "PASS_PORT: %d", PASS_PORT);
+
     servsock_pass = create_server_socket(PASS_PORT);
+    fprintf(stderr, "servsock_pass created\n");
+
     servsock_cert = create_server_socket(CERT_PORT);
+    fprintf(stderr, "servsock_cert created\n");
 
     while (!should_exit) {
         
