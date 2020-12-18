@@ -1,7 +1,6 @@
 To run the programs:
 1) ./setup.sh
-2) ./server
-3) [coming soon] Connecting the client to the server
+2) In another window, ./client 
 
 
 ========= Or equivalently (setup.sh does most of this for you) =======
@@ -12,11 +11,10 @@ Setting up the CA, Intermediate Cert, and Server Cert (I believe these should be
 
 Setting up the Client Cert:
 3) ./client.sh
-    - When prompted to "Enter PEM pass phrase":
 
 Running the server:
 4) ./server
-    - When prompted to "Enter PEM pass phrase":
 
-[coming soon] Connecting the client to the server:
+Connecting the client to the server [in another window]:
+5) ./client
 
