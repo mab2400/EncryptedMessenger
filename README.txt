@@ -1,5 +1,5 @@
 To run the programs:
-1) ./setup.sh
+1) sudo ./setup.sh
 2) In another window, ./client 
 
 
@@ -13,8 +13,8 @@ Setting up the Client Cert:
 3) ./client.sh
 
 Running the server:
-4) ./server
+4) sudo ./server
 
 Connecting the client to the server [in another window]:
-5) ./client
+5) sudo ./client
 
