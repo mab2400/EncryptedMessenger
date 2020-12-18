@@ -79,11 +79,13 @@ SSL_CTX *create_ssl_ctx()
 // Added servaddr parameter so we can fill the server info before calling connect
 int create_client_socket(int port, struct sockaddr_in servaddr)
 {
+    /* ================== GETTING SOME ERRORS FROM THIS FUNCTION ========================= */
+	
     printf("Inside create client socket\n");
-    int sock;
-    char *serverName = "localhost"; /* TODO: Change later */
-    struct hostent *he;
+    struct hostent *he = (struct hostent *) malloc(sizeof(struct hostent));
+    char *serverName = "localhost";
 
+    int sock;
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         die("socket() failed");
 
@@ -176,12 +178,10 @@ int main()
     clntsock_pass = create_client_socket(PASS_PORT, servaddr);
     clntsock_cert = create_client_socket(CERT_PORT, servaddr);
 
-    fd_set fds;
     struct server_ctx server_ctx[1];
     char rbuf[BUFSIZE];
 
-    if (FD_ISSET(clntsock_pass, &fds)
-        && ssl_client_connect(server_ctx, ctx, clntsock_pass, 0, servaddr) == 0)
+    if(ssl_client_connect(server_ctx, ctx, clntsock_pass, 0, servaddr) == 0)
     {
         // TODO: Should I make it ssl_server_cleanup? What do we need to clean up?
         // Should NOT verify server cert
@@ -190,8 +190,7 @@ int main()
         ssl_server_cleanup(server_ctx);
     } 
     
-    if (FD_ISSET(clntsock_cert, &fds)
-        && ssl_client_connect(server_ctx, ctx, clntsock_cert, 1, servaddr) == 0)
+    if(ssl_client_connect(server_ctx, ctx, clntsock_cert, 1, servaddr) == 0)
     {
         // client auth using certificate
         // TODO: Should I send over the client certificate right here?
