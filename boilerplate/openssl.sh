@@ -1,5 +1,4 @@
 #!/bin/bash
-./delete.sh
 
 # Creating a directory rootca to hold the keys and certificates.
 mkdir $HOME/rootca
