@@ -6,9 +6,11 @@ Setting up the CA, Intermediate Cert, and Server Cert (I believe these should be
 
 Setting up the Client Cert:
 3) ./client.sh
+    - When prompted to "Enter PEM pass phrase":
 
 Running the server:
 4) ./server
+    - When prompted to "Enter PEM pass phrase":
 
 [coming soon] Connecting the client to the server:
 
