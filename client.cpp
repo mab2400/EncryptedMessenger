@@ -76,18 +76,29 @@ SSL_CTX *create_ssl_ctx()
     return ctx;
 }
 
-int create_client_socket(int port)
+// Added servaddr parameter so we can fill the server info before calling connect
+int create_client_socket(int port, struct sockaddr_in servaddr)
 {
-    struct sockaddr_in addr;
+    printf("Inside create client socket\n");
     int sock;
+    char *serverName = "localhost"; /* TODO: Change later */
+    struct hostent *he;
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         die("socket() failed");
+
+    printf("Successfully called socket\n");
+
+    if ((he = gethostbyname(serverName)) == NULL)
+	die("gethostbyname failed");
+    char *serverIP = inet_ntoa(*(struct in_addr *)he->h_addr); /* added serverIP */
     
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family      = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port        = htons(port);
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family      = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(serverIP); /* changed from INADDR_ANY */
+    servaddr.sin_port        = htons(port);
+
+    printf("Successfully filled server info\n");
     
     return sock;
 }
@@ -107,24 +118,28 @@ void ssl_server_cleanup(struct server_ctx *sctx)
 int ssl_client_connect(struct server_ctx *sctx,
                       SSL_CTX *ssl_ctx,
                       int clntsock, 
-                      int should_verify_server_cert)
+                      int should_verify_server_cert,
+		      struct sockaddr_in servaddr)
 {
+    fprintf(stderr, "Inside ssl_client_connect\n");
     int sock;
-    struct sockaddr_in servaddr;
     socklen_t servlen = sizeof(servaddr);
 
     if ((sock = connect(clntsock, (struct sockaddr *)&servaddr, servlen)) < 0) {
         perror("connect() failed");
         return -1;
     }
+    fprintf(stderr, "CONNECTED\n");
 
     sctx->ssl = SSL_new(ssl_ctx);
     SSL_set_fd(sctx->ssl, sock);
+    fprintf(stderr, "set file descriptor\n");
 
     if (should_verify_server_cert)
         SSL_set_verify(sctx->ssl, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
     else
         SSL_set_verify(sctx->ssl, SSL_VERIFY_NONE, NULL);
+    fprintf(stderr, "should_verify_server_cert = %d\n", should_verify_server_cert);
 
     if (SSL_connect(sctx->ssl) <= 0) {
         fprintf(stderr, "SSL_connect() failed\n");
@@ -133,6 +148,7 @@ int ssl_client_connect(struct server_ctx *sctx,
         close(sock);
         return -1;
     }
+    fprintf(stderr, "SSL_connect() succeeded.\n");
 
     sctx->buf_io = BIO_new(BIO_f_buffer());             /* create a buffer BIO */
     sctx->ssl_bio = BIO_new(BIO_f_ssl());               /* create an ssl BIO */
@@ -153,32 +169,34 @@ int main()
 
     ssl_load();
     ctx = create_ssl_ctx(); 
+    // Added
+    struct sockaddr_in servaddr;
 
-    // Currently am facing a bug at create_ssl_ctx involving the client private key.
-
-    clntsock_pass = create_client_socket(PASS_PORT);
-    clntsock_cert = create_client_socket(CERT_PORT);
+    // Added extra parameter because we need to fill the servaddr info before calling connect() 
+    clntsock_pass = create_client_socket(PASS_PORT, servaddr);
+    clntsock_cert = create_client_socket(CERT_PORT, servaddr);
 
     fd_set fds;
     struct server_ctx server_ctx[1];
     char rbuf[BUFSIZE];
 
-    if (FD_ISSET(clntsock_pass, &fds) 
-        && ssl_client_connect(server_ctx, ctx, clntsock_pass, 0) == 0)
+    if (FD_ISSET(clntsock_pass, &fds)
+        && ssl_client_connect(server_ctx, ctx, clntsock_pass, 0, servaddr) == 0)
     {
         // TODO: Should I make it ssl_server_cleanup? What do we need to clean up?
         // Should NOT verify server cert
-
+	printf("Inside if statement 1\n");
         BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
         ssl_server_cleanup(server_ctx);
     } 
     
     if (FD_ISSET(clntsock_cert, &fds)
-        && ssl_client_connect(server_ctx, ctx, clntsock_cert, 1) == 0)
+        && ssl_client_connect(server_ctx, ctx, clntsock_cert, 1, servaddr) == 0)
     {
         // client auth using certificate
         // TODO: Should I send over the client certificate right here?
         // Should verify server cert
+	printf("Inside if statement 2\n");
         BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
         ssl_server_cleanup(server_ctx);
     }
