@@ -126,11 +126,13 @@ int ssl_client_accept(struct client_ctx *cctx,
 
     cctx->ssl = SSL_new(ssl_ctx);
     SSL_set_fd(cctx->ssl, clntsock);
+    printf("SSL_set_fd succeeded\n");
 
     if (should_verify_client_cert)
         SSL_set_verify(cctx->ssl, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
     else
         SSL_set_verify(cctx->ssl, SSL_VERIFY_NONE, NULL);
+    printf("should_verify_client_cert succeeded\n");
 
     if (SSL_accept(cctx->ssl) <= 0) {
         fprintf(stderr, "SSL_accept() failed\n");
@@ -139,6 +141,7 @@ int ssl_client_accept(struct client_ctx *cctx,
         close(clntsock);
         return -1;
     }
+    printf("SSL_accept() succeeded\n");
 
     cctx->buf_io = BIO_new(BIO_f_buffer());             /* create a buffer BIO */
     cctx->ssl_bio = BIO_new(BIO_f_ssl());               /* create an ssl BIO */
@@ -184,7 +187,8 @@ int main()
             && ssl_client_accept(client_ctx, ctx, servsock_pass, 0) == 0)
         {
             // client auth using username/password
-            // Server sends "Hello world" to the client
+            // Server sends "Hello world!" to the client
+	    printf("Sending Hello world\n");
             BIO_puts(client_ctx->buf_io, "Hello world!\n");
             ssl_client_cleanup(client_ctx);
         } 
@@ -193,6 +197,7 @@ int main()
             && ssl_client_accept(client_ctx, ctx, servsock_cert, 1) == 0)
         {
             // client auth using certificate
+	    printf("Sending Hello world\n");
             BIO_puts(client_ctx->buf_io, "Hello world!\n");
             ssl_client_cleanup(client_ctx);
         }
