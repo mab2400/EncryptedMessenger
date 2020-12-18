@@ -141,14 +141,6 @@ int ssl_client_connect(struct server_ctx *sctx,
     return 0;
 }
 
-void my_select(int clntsock_pass, int clntsock_cert, fd_set *read_fds) {
-    FD_ZERO(read_fds);
-    FD_SET(clntsock_pass, read_fds);
-    FD_SET(clntsock_cert, read_fds);
-    select(std::max(clntsock_pass, clntsock_cert) + 1,
-           read_fds, NULL, NULL, NULL);
-}
-
 int main()
 {
     // Source: http://h30266.www3.hpe.com/odl/axpos/opsys/vmsos84/BA554_90007/ch04s03.html
@@ -161,39 +153,34 @@ int main()
     ssl_load();
     ctx = create_ssl_ctx(); 
 
+    // Currently am facing a bug at create_ssl_ctx involving the client private key.
+
     clntsock_pass = create_client_socket(PASS_PORT);
     clntsock_cert = create_client_socket(CERT_PORT);
 
-    while (!should_exit) {
-        
-        fd_set fds;
-        struct server_ctx server_ctx[1];
-        char rbuf[BUFSIZE];
+    fd_set fds;
+    struct server_ctx server_ctx[1];
+    char rbuf[BUFSIZE];
 
-        my_select(clntsock_pass, clntsock_cert, &fds);
-        if (should_exit) break;
+    if (FD_ISSET(clntsock_pass, &fds) 
+        && ssl_client_connect(server_ctx, ctx, clntsock_pass, 0) == 0)
+    {
+        // TODO: Should I make it ssl_server_cleanup? What do we need to clean up?
+        // Should NOT verify server cert
 
-        if (FD_ISSET(clntsock_pass, &fds) 
-            && ssl_client_connect(server_ctx, ctx, clntsock_pass, 0) == 0)
-        {
-            // TODO: Should I make it ssl_server_cleanup? What do we need to clean up?
-            // Should NOT verify server cert
-
-            BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
-            ssl_server_cleanup(server_ctx);
-        } 
-        
-        if (FD_ISSET(clntsock_cert, &fds)
-            && ssl_client_connect(server_ctx, ctx, clntsock_cert, 1) == 0)
-        {
-            // client auth using certificate
-            // TODO: Should I send over the client certificate right here?
-            // Should verify server cert
-            BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
-            ssl_server_cleanup(server_ctx);
-        }
+        BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
+        ssl_server_cleanup(server_ctx);
+    } 
     
+    if (FD_ISSET(clntsock_cert, &fds)
+        && ssl_client_connect(server_ctx, ctx, clntsock_cert, 1) == 0)
+    {
+        // client auth using certificate
+        // TODO: Should I send over the client certificate right here?
+        // Should verify server cert
+        BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
+        ssl_server_cleanup(server_ctx);
     }
-
+    
     SSL_CTX_free(ctx);
 }
