@@ -18,6 +18,7 @@
 #define  BUFSIZE    4096
 
 #define  CA_CERT      "../rootca/intermediate/certs/intermediate.cert.pem"
+#define  CLIENT_CERT  "../rootca/intermediate/certs/client.cert.pem"
 #define  CLIENT_KEY   "../rootca/intermediate/private/client.key.pem"
 
 static int should_exit = 0;
@@ -60,7 +61,7 @@ SSL_CTX *create_ssl_ctx()
     ctx = SSL_CTX_new(method);
 
     // Use the CA CERT
-    if (SSL_CTX_use_certificate_file(ctx, CA_CERT, SSL_FILETYPE_PEM) != 1)
+    if (SSL_CTX_use_certificate_file(ctx, CLIENT_CERT, SSL_FILETYPE_PEM) != 1)
         die("SSL_CTX_use_certificate_file() failed");
 
     if (SSL_CTX_use_PrivateKey_file(ctx, CLIENT_KEY, SSL_FILETYPE_PEM) != 1)
