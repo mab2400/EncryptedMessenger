@@ -76,8 +76,19 @@ SSL_CTX *create_ssl_ctx()
     return ctx;
 }
 
+/* NOT SURE IF I SHOULD HAVE THIS? */
+void ssl_server_cleanup(struct server_ctx *sctx)
+{
+    BIO_flush(sctx->buf_io);
+    BIO_free_all(sctx->buf_io);
+
+    // SSL_shutdown(sctx->ssl);
+    // close(SSL_get_fd(sctx->ssl));
+    SSL_free(sctx->ssl);
+}
+
 // Added servaddr parameter so we can fill the server info before calling connect
-int create_client_socket(int port, struct sockaddr_in servaddr)
+int create_client_socket(struct server_ctx *sctx, SSL_CTX *ssl_ctx, int should_verify_server_cert, int port, struct sockaddr_in servaddr)
 {
     /* ================== GETTING SOME ERRORS FROM THIS FUNCTION ========================= */
 	
@@ -85,8 +96,8 @@ int create_client_socket(int port, struct sockaddr_in servaddr)
     struct hostent *he = (struct hostent *) malloc(sizeof(struct hostent));
     char *serverName = "localhost";
 
-    int sock;
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    int clntsock;
+    if ((clntsock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         die("socket() failed");
 
     printf("Successfully called socket\n");
@@ -102,31 +113,9 @@ int create_client_socket(int port, struct sockaddr_in servaddr)
 
     printf("Successfully filled server info\n");
     
-    return sock;
-}
-
-/* NOT SURE IF I SHOULD HAVE THIS? */
-void ssl_server_cleanup(struct server_ctx *sctx)
-{
-    BIO_flush(sctx->buf_io);
-    BIO_free_all(sctx->buf_io);
-
-    /* Wouldn't really make sense to close the server connection. */
-    // SSL_shutdown(sctx->ssl);
-    // close(SSL_get_fd(sctx->ssl));
-    SSL_free(sctx->ssl);
-}
-
-int ssl_client_connect(struct server_ctx *sctx,
-                      SSL_CTX *ssl_ctx,
-                      int clntsock, 
-                      int should_verify_server_cert,
-		      struct sockaddr_in servaddr)
-{
-    fprintf(stderr, "Inside ssl_client_connect\n");
-    int sock;
     socklen_t servlen = sizeof(servaddr);
 
+    int sock;
     if ((sock = connect(clntsock, (struct sockaddr *)&servaddr, servlen)) < 0) {
         perror("connect() failed");
         return -1;
@@ -174,6 +163,24 @@ int main()
     // Added
     struct sockaddr_in servaddr;
 
+    // ==== Mia added =====
+    struct server_ctx server_ctx[1];
+    char rbuf[BUFSIZE];
+    if(create_client_socket(server_ctx, ctx, 0, PASS_PORT, servaddr) == 0) 
+    {
+	printf("Inside if statement 1\n");
+        BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
+        ssl_server_cleanup(server_ctx);
+    }
+
+    if(create_client_socket(server_ctx, ctx, 1, CERT_PORT, servaddr) == 0) 
+    {
+	printf("Inside if statement 2\n");
+        BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
+        ssl_server_cleanup(server_ctx);
+    }
+
+    /*
     // Added extra parameter because we need to fill the servaddr info before calling connect() 
     clntsock_pass = create_client_socket(PASS_PORT, servaddr);
     clntsock_cert = create_client_socket(CERT_PORT, servaddr);
@@ -199,6 +206,7 @@ int main()
         BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
         ssl_server_cleanup(server_ctx);
     }
+    */
     
     SSL_CTX_free(ctx);
 }
