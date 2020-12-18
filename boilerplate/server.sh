@@ -179,20 +179,3 @@ extendedKeyUsage = critical, OCSPSigning
  # The ca-chain is the root CA plus the intermediate CA.
  openssl verify -CAfile $HOME/rootca/intermediate/certs/ca-chain.cert.pem \
                         $HOME/rootca/intermediate/certs/server.cert.pem
-
- # Write a random text file to the current directory
- # The client will ask the server for this file later.
- echo "
-
-  ∧＿∧
- ( ･w･)つ━☆・*。
- ⊂　 ノ 　　　・゜+. security is fun
- しーＪ　　　°。+ *
-
- " > textfile.txt
-
- # Starting the OpenSSL s_server
- openssl s_server -key $HOME/rootca/intermediate/private/server.key.pem \
-                  -cert $HOME/rootca/intermediate/certs/server.cert.pem \
-                  -accept 4433 \
-                  -HTTP \

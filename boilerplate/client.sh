@@ -179,9 +179,3 @@ extendedKeyUsage = critical, OCSPSigning
  # The ca-chain is the root CA plus the intermediate CA.
  openssl verify -CAfile $HOME/rootca/intermediate/certs/ca-chain.cert.pem \
                         $HOME/rootca/intermediate/certs/client.cert.pem
-
- # Connecting to the server and calling the GET request
- echo "GET /textfile.txt HTTP/1.1" | \
-     openssl s_client -connect localhost:4433 \
-                      -CAfile $HOME/rootca/intermediate/certs/ca-chain.cert.pem \
-                      -ign_eof
