@@ -20,12 +20,11 @@ int main(int argc, char **argv)
 	SSL_CTX *ctx;
 	SSL *ssl;
 	const SSL_METHOD *meth;
-	BIO *sbio;
 	int err; char *s;
 
 	int ilen;
 	char ibuf[512];
-	char *obuf = (char *) "GET / HTTP/1.0\r\n";
+	char *obuf = (char *) "GET / HTTP/1.0\r\nThis is a test\r\n";
 
 	struct sockaddr_in sin;
 	int sock;
@@ -65,12 +64,23 @@ int main(int argc, char **argv)
 		return 2;
 	}
 
+	SSL_set_fd(ssl, sock);
+	BIO *sbio;
 	sbio=BIO_new(BIO_s_socket());
-    // Creating a BIO socket to translate between the regular socket and the SSL methods
 	BIO_set_fd(sbio, sock, BIO_NOCLOSE);
 	SSL_set_bio(ssl, sbio, sbio);
 
-	err = SSL_connect(ssl);
+	BIO *buf_io;
+	BIO *ssl_bio;
+	char rbuf[1024];
+	char wbuf[1024];
+
+	buf_io = BIO_new(BIO_f_buffer()); /* buf_io is type BIO * */
+	ssl_bio = BIO_new(BIO_f_ssl()); /* ssl_bio is type BIO * */
+	BIO_set_ssl(ssl_bio, ssl, BIO_CLOSE);
+	BIO_push(buf_io, ssl_bio);
+
+	err = SSL_connect(ssl); /* ssl is type SSL * */
 	if (SSL_connect(ssl) != 1) {
 		switch (SSL_get_error(ssl, err)) {
 			case SSL_ERROR_NONE: s=(char *) "SSL_ERROR_NONE"; break;
@@ -92,23 +102,21 @@ int main(int argc, char **argv)
 
 	// TEST 1) Read from the server
 	
-	SSL_read(ssl, ibuf, 12); 
-	ibuf[11] = 0;
+	//SSL_read(ssl, ibuf, 12); 
+	//ibuf[11] = 0;
 	// ===== OR =====
-	//BIO_gets(sbio, ibuf, 100);
+	//BIO_gets(buf_io, ibuf, 100);
 	
-        printf("%s\n", ibuf);
+        //printf("%s\n", ibuf);
 
 	// TEST 2) Send GET Request
 	
-	//SSL_write(ssl, obuf, sizeof(obuf));
+	//SSL_write(ssl, obuf, strlen(obuf));
 	// ===== OR =====
-	//BIO_puts(sbio, obuf);
+	BIO_puts(buf_io, obuf);
+	BIO_flush(buf_io);
 
-	//printf("SENT GET REQUEST\n");
-
-	BIO_flush(sbio);
 	SSL_free(ssl);
-	SSL_CTX_free(ctx);
+	SSL_CTX_free(ctx); /* Doesn't seem to free anything. */
 	return 0;
 }

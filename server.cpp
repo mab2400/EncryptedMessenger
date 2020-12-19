@@ -100,6 +100,7 @@ int create_server_socket(int port)
 
 void ssl_client_cleanup(struct client_ctx *cctx)
 {
+    printf("INSIDE CLIENT CLEANUP\n");
     BIO_flush(cctx->buf_io);
     BIO_free_all(cctx->buf_io);
 
@@ -142,6 +143,11 @@ int ssl_client_accept(struct client_ctx *cctx,
         return -1;
     }
     printf("SSL_accept() succeeded\n");
+
+    BIO *sbio;
+    sbio = BIO_new(BIO_s_socket());
+    BIO_set_fd(sbio, clntsock, BIO_NOCLOSE);
+    SSL_set_bio(cctx->ssl, sbio, sbio);
 
     cctx->buf_io = BIO_new(BIO_f_buffer());             /* create a buffer BIO */
     cctx->ssl_bio = BIO_new(BIO_f_ssl());               /* create an ssl BIO */
@@ -192,10 +198,10 @@ int main()
 	    char buf[1000];
             // client auth using username/password
             // Server sends "Hello world!" to the client
-            BIO_puts(client_ctx->buf_io, "Hello world!\r\nTest\r\n");
-	    printf("Sent Hello world\n");
-	    //BIO_gets(client_ctx->buf_io, buf, 12);
-	    //printf("%s\n", buf);
+            //BIO_puts(client_ctx->buf_io, "Hello world!\r\nTest\r\n");
+	    //printf("Sent Hello world\n");
+	    BIO_gets(client_ctx->buf_io, buf, 100);
+	    printf("%s\n", buf);
             ssl_client_cleanup(client_ctx);
         } 
         
