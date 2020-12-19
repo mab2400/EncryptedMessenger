@@ -162,6 +162,9 @@ void my_select(int servsock_pass, int servsock_cert, fd_set *read_fds) {
 int main()
 {
     // Source: http://h30266.www3.hpe.com/odl/axpos/opsys/vmsos84/BA554_90007/ch04s03.html
+    
+    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+	die("signal() failed");
 
     SSL_CTX *ctx;
     int servsock_pass, servsock_cert;
@@ -186,19 +189,27 @@ int main()
         if (FD_ISSET(servsock_pass, &fds) 
             && ssl_client_accept(client_ctx, ctx, servsock_pass, 0) == 0)
         {
+	    char buf[1000];
             // client auth using username/password
             // Server sends "Hello world!" to the client
-	    printf("Sending Hello world\n");
-            BIO_puts(client_ctx->buf_io, "Hello world!\n");
+            //BIO_puts(client_ctx->buf_io, "Hello world!\n");
+	    //printf("Sent Hello world\n");
+	    BIO_gets(client_ctx->buf_io, buf, 12);
+	    printf("%s\n", buf);
+	    fflush(stdout);
             ssl_client_cleanup(client_ctx);
         } 
         
         if (FD_ISSET(servsock_cert, &fds)
             && ssl_client_accept(client_ctx, ctx, servsock_cert, 1) == 0)
         {
+	    char buf[1000];
             // client auth using certificate
 	    printf("Sending Hello world\n");
             BIO_puts(client_ctx->buf_io, "Hello world!\n");
+	    BIO_gets(client_ctx->buf_io, buf, 10);
+	    buf[9] = 0;
+	    printf(buf);
             ssl_client_cleanup(client_ctx);
         }
     

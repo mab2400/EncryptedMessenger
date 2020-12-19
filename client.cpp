@@ -1,10 +1,15 @@
+#include <cstdio>
+#include <cstring>
+#include <csignal>
+#include <unistd.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+
 #include <stdio.h>
 #include <strings.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
 
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
@@ -20,7 +25,7 @@ int main(int argc, char **argv)
 
 	int ilen;
 	char ibuf[512];
-	char *obuf = "GET / HTTP/1.0\n\n";
+	char *obuf = "GET / HTTP/1.0\r\n";
 
 	struct sockaddr_in sin;
 	int sock;
@@ -85,11 +90,18 @@ int main(int argc, char **argv)
 		return 3;
 	}
 
-	SSL_read(ssl, ibuf, 12); 
-	printf(ibuf);
+	//SSL_read(ssl, ibuf, 12); 
+	//ibuf[11] = 0;
+	//printf("%s\n", ibuf);
+	//fflush(stdout);
 
 	// write/send request
 	// to read the response from the server, use BIO gets to read lines
+	SSL_write(ssl, obuf, sizeof(obuf));
+	printf("SENT GET REQUEST\n");
 
+	BIO_flush(sbio);
+	SSL_free(ssl);
+	SSL_CTX_free(ctx);
 	return 0;
 }
