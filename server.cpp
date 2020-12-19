@@ -196,9 +196,13 @@ int main()
         {
 	    char buf[1000];
             // client auth using username/password
-            // Server sends "Hello world!" to the client
-            //BIO_puts(client_ctx->buf_io, "Hello world!\r\nTest\r\n");
-	    //printf("Sent Hello world\n");
+
+	    // TEST 1) Send something to the client
+            BIO_puts(client_ctx->buf_io, "Hello world!\r\nTest\r\n\r\n");
+	    BIO_flush(client_ctx->buf_io);
+
+	    // TEST 2) Read GET request from the client
+	    /* 
 	    while(1)
 	    {
 		BIO_gets(client_ctx->buf_io, buf, 100);
@@ -206,6 +210,9 @@ int main()
 		if(strcmp(buf, "\r\n")==0)
 		    break;
 	    }
+	    */
+
+
             ssl_client_cleanup(client_ctx);
         } 
         

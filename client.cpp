@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 	int err; char *s;
 
 	int ilen;
-	char ibuf[512];
+	char ibuf[1000];
 	char *obuf = (char *) "GET / HTTP/1.0\r\nThis is a test\r\n\r\n";
 
 	struct sockaddr_in sin;
@@ -101,23 +101,19 @@ int main(int argc, char **argv)
 	}
 
 	// TEST 1) Read from the server
-	
-	//SSL_read(ssl, ibuf, 12); 
-	//ibuf[11] = 0;
-	// ===== OR =====
-	//BIO_gets(buf_io, ibuf, 100);
-	
-        //printf("%s\n", ibuf);
+	while(1)
+	{
+	    BIO_gets(buf_io, ibuf, 100);
+	    printf(ibuf);
+	    if(strcmp(ibuf, "\r\n")==0)
+		break;
+	}
 
 	// TEST 2) Send GET Request
-	
-	//SSL_write(ssl, obuf, strlen(obuf));
-	// ===== OR =====
-	int i;
-	i = BIO_puts(buf_io, obuf);
-	//printf("sent %d bytes\n", i);
+	/*
+	BIO_puts(buf_io, obuf);
 	BIO_flush(buf_io);
-
+	*/
 
 	// FREE!
         BIO_free_all(buf_io);
