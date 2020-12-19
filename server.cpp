@@ -192,11 +192,10 @@ int main()
 	    char buf[1000];
             // client auth using username/password
             // Server sends "Hello world!" to the client
-            //BIO_puts(client_ctx->buf_io, "Hello world!\n");
-	    //printf("Sent Hello world\n");
-	    BIO_gets(client_ctx->buf_io, buf, 12);
-	    printf("%s\n", buf);
-	    fflush(stdout);
+            BIO_puts(client_ctx->buf_io, "Hello world!\r\nTest\r\n");
+	    printf("Sent Hello world\n");
+	    //BIO_gets(client_ctx->buf_io, buf, 12);
+	    //printf("%s\n", buf);
             ssl_client_cleanup(client_ctx);
         } 
         

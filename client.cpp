@@ -90,14 +90,21 @@ int main(int argc, char **argv)
 		return 3;
 	}
 
+	// TEST 1) Read from the server
+	
 	SSL_read(ssl, ibuf, 12); 
 	ibuf[11] = 0;
-	printf("%s\n", ibuf);
-	fflush(stdout);
+	// ===== OR =====
+	//BIO_gets(sbio, ibuf, 100);
+	
+        printf("%s\n", ibuf);
 
-	// write/send request
-	// to read the response from the server, use BIO gets to read lines
+	// TEST 2) Send GET Request
+	
 	//SSL_write(ssl, obuf, sizeof(obuf));
+	// ===== OR =====
+	//BIO_puts(sbio, obuf);
+
 	//printf("SENT GET REQUEST\n");
 
 	BIO_flush(sbio);
