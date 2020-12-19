@@ -202,7 +202,9 @@ int main()
 	    while(1)
 	    {
 		BIO_gets(client_ctx->buf_io, buf, 100);
-	        printf(buf);
+		printf(buf);
+		if(strcmp(buf, "\r\n")==0)
+		    break;
 	    }
             ssl_client_cleanup(client_ctx);
         } 

@@ -24,7 +24,7 @@ int main(int argc, char **argv)
 
 	int ilen;
 	char ibuf[512];
-	char *obuf = (char *) "GET / HTTP/1.0\r\nThis is a test\r\n";
+	char *obuf = (char *) "GET / HTTP/1.0\r\nThis is a test\r\n\r\n";
 
 	struct sockaddr_in sin;
 	int sock;
@@ -113,10 +113,14 @@ int main(int argc, char **argv)
 	
 	//SSL_write(ssl, obuf, strlen(obuf));
 	// ===== OR =====
-	BIO_puts(buf_io, obuf);
+	int i;
+	i = BIO_puts(buf_io, obuf);
+	//printf("sent %d bytes\n", i);
 	BIO_flush(buf_io);
 
-	SSL_free(ssl);
-	SSL_CTX_free(ctx); /* Doesn't seem to free anything. */
+
+	// FREE!
+        BIO_free_all(buf_io);
+	SSL_CTX_free(ctx); 
 	return 0;
 }
