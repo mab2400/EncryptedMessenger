@@ -86,11 +86,11 @@ int create_server_socket(int port)
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port        = htons(port);
     
-    fprintf(stderr, "Attempting bind() on PORT %d\n", port);
+    //fprintf(stderr, "Attempting bind() on PORT %d\n", port);
     if (bind(servsock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
         die("bind() failed");
 
-    fprintf(stderr, "bind() succeeded on PORT %d\n", port);
+    //fprintf(stderr, "bind() succeeded on PORT %d\n", port);
     
     if (listen(servsock, 5) < 0)
         die("listen() failed");
@@ -100,7 +100,6 @@ int create_server_socket(int port)
 
 void ssl_client_cleanup(struct client_ctx *cctx)
 {
-    printf("INSIDE CLIENT CLEANUP\n");
     BIO_flush(cctx->buf_io);
     BIO_free_all(cctx->buf_io);
 
@@ -127,13 +126,13 @@ int ssl_client_accept(struct client_ctx *cctx,
 
     cctx->ssl = SSL_new(ssl_ctx);
     SSL_set_fd(cctx->ssl, clntsock);
-    printf("SSL_set_fd succeeded\n");
+    //printf("SSL_set_fd succeeded\n");
 
     if (should_verify_client_cert)
         SSL_set_verify(cctx->ssl, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
     else
         SSL_set_verify(cctx->ssl, SSL_VERIFY_NONE, NULL);
-    printf("should_verify_client_cert succeeded\n");
+    //printf("should_verify_client_cert succeeded\n");
 
     if (SSL_accept(cctx->ssl) <= 0) {
         fprintf(stderr, "SSL_accept() failed\n");
@@ -142,7 +141,7 @@ int ssl_client_accept(struct client_ctx *cctx,
         close(clntsock);
         return -1;
     }
-    printf("SSL_accept() succeeded\n");
+    //printf("SSL_accept() succeeded\n");
 
     BIO *sbio;
     sbio = BIO_new(BIO_s_socket());
@@ -200,8 +199,11 @@ int main()
             // Server sends "Hello world!" to the client
             //BIO_puts(client_ctx->buf_io, "Hello world!\r\nTest\r\n");
 	    //printf("Sent Hello world\n");
-	    BIO_gets(client_ctx->buf_io, buf, 100);
-	    printf("%s\n", buf);
+	    while(1)
+	    {
+		BIO_gets(client_ctx->buf_io, buf, 100);
+	        printf(buf);
+	    }
             ssl_client_cleanup(client_ctx);
         } 
         
@@ -210,7 +212,7 @@ int main()
         {
 	    char buf[1000];
             // client auth using certificate
-	    printf("Sending Hello world\n");
+	    //printf("Sending Hello world\n");
             BIO_puts(client_ctx->buf_io, "Hello world!\n");
 	    BIO_gets(client_ctx->buf_io, buf, 10);
 	    buf[9] = 0;
