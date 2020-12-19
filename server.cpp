@@ -16,9 +16,9 @@
 
 #define  BUFSIZE    4096
 
-#define  CA_CERT      "../rootca/intermediate/certs/intermediate.cert.pem"
-#define  SERVER_CERT  "../rootca/intermediate/certs/server.cert.pem"
-#define  SERVER_KEY   "../rootca/intermediate/private/server.key.pem"
+#define  CA_CERT      "certs/ca/intermediate/certs/ca-chain.cert.pem"
+#define  SERVER_CERT  "certs/ca/server/certs/server.cert.pem"
+#define  SERVER_KEY   "certs/ca/server/private/server.key.pem"
 
 static int should_exit = 0;
 

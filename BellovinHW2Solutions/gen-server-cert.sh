@@ -13,5 +13,3 @@ openssl ca -batch -config intermediate/openssl-inter.cnf -extensions server_cert
 chmod 444 server/certs/server.cert.pem
 openssl verify -CAfile intermediate/certs/ca-chain.cert.pem server/certs/server.cert.pem
 cp intermediate/certs/ca-chain.cert.pem server/certs/ca-chain.cert.pem
-cp intermediate/certs/ca-chain_2.cert.pem server/certs/ca-chain_2.cert.pem
-cp intermediate/certs/ca-chain-expired.cert.pem server/certs/ca-chain-expired.cert.pem
