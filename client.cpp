@@ -1,212 +1,95 @@
-#include <cstdio>
-#include <cstring>
-#include <csignal>
-#include <unistd.h>
+#include <stdio.h>
+#include <strings.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
-
-#include <algorithm>
 
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
-#define  PASS_PORT  25565   // client auth using username/password
-//#define  CERT_PORT  443     // client auth using certificate
-#define  CERT_PORT  10834   // client auth using certificate
-
-#define  BUFSIZE    4096
-
-#define  CA_CERT      "../rootca/intermediate/certs/intermediate.cert.pem"
-#define  CLIENT_CERT  "../rootca/intermediate/certs/client.cert.pem"
-#define  CLIENT_KEY   "../rootca/intermediate/private/client.key.pem"
-
-static int should_exit = 0;
-
-struct server_ctx {
-    SSL *ssl;
-    BIO *ssl_bio;
-    BIO *buf_io;
-};
-
-void die(const char *msg)
+int main(int argc, char **argv)
 {
-    if (errno)
-        perror(msg);
-    else
-        fprintf(stderr, "%s\n", msg);
-    ERR_print_errors_fp(stderr);
-    exit(1);
-}
+	SSL_CTX *ctx;
+	SSL *ssl;
+	const SSL_METHOD *meth;
+	BIO *sbio;
+	int err; char *s;
 
-void intHandler(int unused) 
-{
-    should_exit = 1;
-}
+	int ilen;
+	char ibuf[512];
+	char *obuf = "GET / HTTP/1.0\n\n";
 
-void ssl_load()
-{
-    // load ssl algos and error strings
-    SSL_library_init();
-    SSL_load_error_strings();
-}
+	struct sockaddr_in sin;
+	int sock;
+	struct hostent *he;
 
-SSL_CTX *create_ssl_ctx()
-{
-    SSL_CTX *ctx;
-    const SSL_METHOD *method;
-    
-    // CLIENT
-    method = TLS_client_method();
-    ctx = SSL_CTX_new(method);
+	SSL_library_init(); /* load encryption & hash algorithms for SSL */         	
+	SSL_load_error_strings(); /* load the error strings for good error reporting */
 
-    // Use the CA CERT
-    if (SSL_CTX_use_certificate_file(ctx, CLIENT_CERT, SSL_FILETYPE_PEM) != 1)
-        die("SSL_CTX_use_certificate_file() failed");
+	meth = TLS_client_method();
+	ctx = SSL_CTX_new(meth);
 
-    if (SSL_CTX_use_PrivateKey_file(ctx, CLIENT_KEY, SSL_FILETYPE_PEM) != 1)
-        die("SSL_CTX_use_PrivateKey_file() failed");
-
-    if (SSL_CTX_check_private_key(ctx) != 1)
-        die("SSL_CTX_check_private_key() failed");
-
-    if (SSL_CTX_load_verify_locations(ctx, CA_CERT, NULL) != 1)
-        die("SSL_CTX_load_verify_locations() failed");
-
-    return ctx;
-}
-
-/* NOT SURE IF I SHOULD HAVE THIS? */
-void ssl_server_cleanup(struct server_ctx *sctx)
-{
-    BIO_flush(sctx->buf_io);
-    BIO_free_all(sctx->buf_io);
-
-    // SSL_shutdown(sctx->ssl);
-    // close(SSL_get_fd(sctx->ssl));
-    SSL_free(sctx->ssl);
-}
-
-// Added servaddr parameter so we can fill the server info before calling connect
-int create_client_socket(struct server_ctx *sctx, SSL_CTX *ssl_ctx, int should_verify_server_cert, int port, struct sockaddr_in servaddr)
-{
-    /* ================== GETTING SOME ERRORS FROM THIS FUNCTION ========================= */
-	
-    printf("Inside create client socket\n");
-    struct hostent *he = (struct hostent *) malloc(sizeof(struct hostent));
-    char *serverName = "localhost";
-
-    int clntsock;
-    if ((clntsock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        die("socket() failed");
-
-    printf("Successfully called socket\n");
-
-    if ((he = gethostbyname(serverName)) == NULL)
-	die("gethostbyname failed");
-    char *serverIP = inet_ntoa(*(struct in_addr *)he->h_addr); /* added serverIP */
-    
-    memset(&servaddr, 0, sizeof(servaddr));
-    servaddr.sin_family      = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(serverIP); /* changed from INADDR_ANY */
-    servaddr.sin_port        = htons(port);
-
-    printf("Successfully filled server info\n");
-    
-    socklen_t servlen = sizeof(servaddr);
-
-    int sock;
-    if ((sock = connect(clntsock, (struct sockaddr *)&servaddr, servlen)) < 0) {
-        perror("connect() failed");
-        return -1;
-    }
-    fprintf(stderr, "CONNECTED\n");
-
-    sctx->ssl = SSL_new(ssl_ctx);
-    SSL_set_fd(sctx->ssl, sock);
-    fprintf(stderr, "set file descriptor\n");
-
-    if (should_verify_server_cert)
-        SSL_set_verify(sctx->ssl, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
-    else
-        SSL_set_verify(sctx->ssl, SSL_VERIFY_NONE, NULL);
-    fprintf(stderr, "should_verify_server_cert = %d\n", should_verify_server_cert);
-
-    if (SSL_connect(sctx->ssl) <= 0) {
-        fprintf(stderr, "SSL_connect() failed\n");
-        ERR_print_errors_fp(stderr);
-        SSL_free(sctx->ssl);
-        close(sock);
-        return -1;
-    }
-    fprintf(stderr, "SSL_connect() succeeded.\n");
-
-    sctx->buf_io = BIO_new(BIO_f_buffer());             /* create a buffer BIO */
-    sctx->ssl_bio = BIO_new(BIO_f_ssl());               /* create an ssl BIO */
-    BIO_set_ssl(sctx->ssl_bio, sctx->ssl, BIO_NOCLOSE); /* assign the ssl BIO to SSL */
-    BIO_push(sctx->buf_io, sctx->ssl_bio);              /* add ssl_bio to buf_io */
-
-    return 0;
-}
-
-int main()
-{
-    // Source: http://h30266.www3.hpe.com/odl/axpos/opsys/vmsos84/BA554_90007/ch04s03.html
-
-    SSL_CTX *ctx;
-    int clntsock_pass, clntsock_cert;
-
-    signal(SIGINT, intHandler);
-
-    ssl_load();
-    ctx = create_ssl_ctx(); 
-    // Added
-    struct sockaddr_in servaddr;
-
-    // ==== Mia added =====
-    struct server_ctx server_ctx[1];
-    char rbuf[BUFSIZE];
-    if(create_client_socket(server_ctx, ctx, 0, PASS_PORT, servaddr) == 0) 
-    {
-	printf("Inside if statement 1\n");
-        BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
-        ssl_server_cleanup(server_ctx);
-    }
-
-    if(create_client_socket(server_ctx, ctx, 1, CERT_PORT, servaddr) == 0) 
-    {
-	printf("Inside if statement 2\n");
-        BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
-        ssl_server_cleanup(server_ctx);
-    }
-
+	SSL_CTX_set_default_verify_dir(ctx);
+	/* SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL); */
+    // Do we have to write this ourselves?
     /*
-    // Added extra parameter because we need to fill the servaddr info before calling connect() 
-    clntsock_pass = create_client_socket(PASS_PORT, servaddr);
-    clntsock_cert = create_client_socket(CERT_PORT, servaddr);
+     int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *CAfile, const char *CApath);
+     */
 
-    struct server_ctx server_ctx[1];
-    char rbuf[BUFSIZE];
+	SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
 
-    if(ssl_client_connect(server_ctx, ctx, clntsock_pass, 0, servaddr) == 0)
-    {
-        // TODO: Should I make it ssl_server_cleanup? What do we need to clean up?
-        // Should NOT verify server cert
-	printf("Inside if statement 1\n");
-        BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
-        ssl_server_cleanup(server_ctx);
-    } 
-    
-    if(ssl_client_connect(server_ctx, ctx, clntsock_cert, 1, servaddr) == 0)
-    {
-        // client auth using certificate
-        // TODO: Should I send over the client certificate right here?
-        // Should verify server cert
-	printf("Inside if statement 2\n");
-        BIO_gets(server_ctx->buf_io, rbuf, BUFSIZE);
-        ssl_server_cleanup(server_ctx);
-    }
-    */
-    
-    SSL_CTX_free(ctx);
+	ssl = SSL_new(ctx);
+
+	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sock < 0) {
+		perror("socket");
+		return 1;
+	}
+
+	bzero(&sin, sizeof sin);
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons(25565);
+
+	he = gethostbyname("localhost");
+	memcpy(&sin.sin_addr, (struct in_addr *)he->h_addr, he->h_length);
+	if (connect(sock, (struct sockaddr *)&sin, sizeof sin) < 0) {
+		perror("connect");
+		return 2;
+	}
+
+	sbio=BIO_new(BIO_s_socket());
+    // Creating a BIO socket to translate between the regular socket and the SSL methods
+	BIO_set_fd(sbio, sock, BIO_NOCLOSE);
+	SSL_set_bio(ssl, sbio, sbio);
+
+	err = SSL_connect(ssl);
+	if (SSL_connect(ssl) != 1) {
+		switch (SSL_get_error(ssl, err)) {
+			case SSL_ERROR_NONE: s="SSL_ERROR_NONE"; break;
+			case SSL_ERROR_ZERO_RETURN: s="SSL_ERROR_ZERO_RETURN"; break;
+			case SSL_ERROR_WANT_READ: s="SSL_ERROR_WANT_READ"; break;
+			case SSL_ERROR_WANT_WRITE: s="SSL_ERROR_WANT_WRITE"; break;
+			case SSL_ERROR_WANT_CONNECT: s="SSL_ERROR_WANT_CONNECT"; break;
+			case SSL_ERROR_WANT_ACCEPT: s="SSL_ERROR_WANT_ACCEPT"; break;
+			case SSL_ERROR_WANT_X509_LOOKUP: s="SSL_ERROR_WANT_X509_LOOKUP"; break;
+			case SSL_ERROR_WANT_ASYNC: s="SSL_ERROR_WANT_ASYNC"; break;
+			case SSL_ERROR_WANT_ASYNC_JOB: s="SSL_ERROR_WANT_ASYNC_JOB"; break;
+			case SSL_ERROR_SYSCALL: s="SSL_ERROR_SYSCALL"; break;
+			case SSL_ERROR_SSL: s="SSL_ERROR_SSL"; break;
+		}
+		fprintf(stderr, "SSL error: %s\n", s);
+		ERR_print_errors_fp(stderr);
+		return 3;
+	}
+
+	SSL_read(ssl, ibuf, 12); 
+	printf(ibuf);
+
+	// write/send request
+	// to read the response from the server, use BIO gets to read lines
+
+	return 0;
 }
