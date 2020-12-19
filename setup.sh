@@ -5,4 +5,4 @@ make
 ./boilerplate/openssl.sh
 ./boilerplate/server.sh
 ./boilerplate/client.sh
-sudo ./server
+valgrind ./server

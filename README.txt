@@ -1,6 +1,6 @@
 To run the programs:
-1) sudo ./setup.sh
-2) In another window, ./client 
+1) ./setup.sh
+2) In another window, valgrind ./client 
 
 
 ========= Or equivalently (setup.sh does most of this for you) =======
@@ -13,8 +13,8 @@ Setting up the Client Cert:
 3) ./client.sh
 
 Running the server:
-4) sudo ./server
+4) valgrind ./server
 
 Connecting the client to the server [in another window]:
-5) sudo ./client
+5) valgrind ./client
 
