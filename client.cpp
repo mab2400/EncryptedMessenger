@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 
 	int ilen;
 	char ibuf[512];
-	char *obuf = "GET / HTTP/1.0\r\n";
+	char *obuf = (char *) "GET / HTTP/1.0\r\n";
 
 	struct sockaddr_in sin;
 	int sock;
@@ -73,32 +73,32 @@ int main(int argc, char **argv)
 	err = SSL_connect(ssl);
 	if (SSL_connect(ssl) != 1) {
 		switch (SSL_get_error(ssl, err)) {
-			case SSL_ERROR_NONE: s="SSL_ERROR_NONE"; break;
-			case SSL_ERROR_ZERO_RETURN: s="SSL_ERROR_ZERO_RETURN"; break;
-			case SSL_ERROR_WANT_READ: s="SSL_ERROR_WANT_READ"; break;
-			case SSL_ERROR_WANT_WRITE: s="SSL_ERROR_WANT_WRITE"; break;
-			case SSL_ERROR_WANT_CONNECT: s="SSL_ERROR_WANT_CONNECT"; break;
-			case SSL_ERROR_WANT_ACCEPT: s="SSL_ERROR_WANT_ACCEPT"; break;
-			case SSL_ERROR_WANT_X509_LOOKUP: s="SSL_ERROR_WANT_X509_LOOKUP"; break;
-			case SSL_ERROR_WANT_ASYNC: s="SSL_ERROR_WANT_ASYNC"; break;
-			case SSL_ERROR_WANT_ASYNC_JOB: s="SSL_ERROR_WANT_ASYNC_JOB"; break;
-			case SSL_ERROR_SYSCALL: s="SSL_ERROR_SYSCALL"; break;
-			case SSL_ERROR_SSL: s="SSL_ERROR_SSL"; break;
+			case SSL_ERROR_NONE: s=(char *) "SSL_ERROR_NONE"; break;
+			case SSL_ERROR_ZERO_RETURN: s=(char *) "SSL_ERROR_ZERO_RETURN"; break;
+			case SSL_ERROR_WANT_READ: s=(char *) "SSL_ERROR_WANT_READ"; break;
+			case SSL_ERROR_WANT_WRITE: s=(char *) "SSL_ERROR_WANT_WRITE"; break;
+			case SSL_ERROR_WANT_CONNECT: s=(char *) "SSL_ERROR_WANT_CONNECT"; break;
+			case SSL_ERROR_WANT_ACCEPT: s=(char *) "SSL_ERROR_WANT_ACCEPT"; break;
+			case SSL_ERROR_WANT_X509_LOOKUP: s=(char *) "SSL_ERROR_WANT_X509_LOOKUP"; break;
+			case SSL_ERROR_WANT_ASYNC: s=(char *) "SSL_ERROR_WANT_ASYNC"; break;
+			case SSL_ERROR_WANT_ASYNC_JOB: s=(char *) "SSL_ERROR_WANT_ASYNC_JOB"; break;
+			case SSL_ERROR_SYSCALL: s=(char *) "SSL_ERROR_SYSCALL"; break;
+			case SSL_ERROR_SSL: s=(char *) "SSL_ERROR_SSL"; break;
 		}
 		fprintf(stderr, "SSL error: %s\n", s);
 		ERR_print_errors_fp(stderr);
 		return 3;
 	}
 
-	//SSL_read(ssl, ibuf, 12); 
-	//ibuf[11] = 0;
-	//printf("%s\n", ibuf);
-	//fflush(stdout);
+	SSL_read(ssl, ibuf, 12); 
+	ibuf[11] = 0;
+	printf("%s\n", ibuf);
+	fflush(stdout);
 
 	// write/send request
 	// to read the response from the server, use BIO gets to read lines
-	SSL_write(ssl, obuf, sizeof(obuf));
-	printf("SENT GET REQUEST\n");
+	//SSL_write(ssl, obuf, sizeof(obuf));
+	//printf("SENT GET REQUEST\n");
 
 	BIO_flush(sbio);
 	SSL_free(ssl);
