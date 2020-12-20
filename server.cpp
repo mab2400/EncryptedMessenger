@@ -194,19 +194,35 @@ int main()
         if (FD_ISSET(servsock_pass, &fds) 
             && ssl_client_accept(client_ctx, ctx, servsock_pass, 0) == 0)
         {
-	    char buf[1000];
-            // client auth using username/password
+	    // FOR REFERENCE) Send something to the client
+            //BIO_puts(client_ctx->buf_io, "Hello world!\r\nTest\r\n\r\n");
+	    //BIO_flush(client_ctx->buf_io);
 
-	    // TEST 1) Send something to the client
-            BIO_puts(client_ctx->buf_io, "Hello world!\r\nTest\r\n\r\n");
-	    BIO_flush(client_ctx->buf_io);
+	    // Read all headers first, to determine which client is connecting
+	    char request[1000];
+	    int iteration = 0;
+	    while(1)
+	    {
+		BIO_gets(client_ctx->buf_io, request, 100);
+		if (iteration == 0)
+		{
+			char *client_name = request;
+			client_name+=5;
+			client_name[8] = 0;
+			printf(client_name);
+			if(strncmp(request, "getcert", 7)
+		}
+		if(strcmp(buf, "\r\n")==0)
+		    break;
+		iteration++;
+	    }
 
-	    // TEST 2) Read GET request from the client
+	    // Read GET request (Username + Password) from the client
 	    /* 
 	    while(1)
 	    {
-		BIO_gets(client_ctx->buf_io, buf, 100);
-		printf(buf);
+		BIO_gets(client_ctx->buf_io, request, 100);
+		printf(request);
 		if(strcmp(buf, "\r\n")==0)
 		    break;
 	    }

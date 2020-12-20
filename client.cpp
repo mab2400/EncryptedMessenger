@@ -101,6 +101,7 @@ int main(int argc, char **argv)
 	}
 
 	// TEST 1) Read from the server
+	/*
 	while(1)
 	{
 	    BIO_gets(buf_io, ibuf, 100);
@@ -108,11 +109,12 @@ int main(int argc, char **argv)
 	    if(strcmp(ibuf, "\r\n")==0)
 		break;
 	}
+	*/
 
 	// TEST 2) Send GET Request
-	/*
 	BIO_puts(buf_io, obuf);
 	BIO_flush(buf_io);
+	/*
 	*/
 
 	// FREE!
