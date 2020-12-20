@@ -215,22 +215,43 @@ int main()
 		is_changepw = 1;
 
 	    // Read the rest of the GET request (Username + Password) from the client
+	    char username[100];
+	    char password[100];
 	    while(1)
 	    {
 		BIO_gets(client_ctx->buf_io, request, 100);
-		printf(request);
 
 		/* TODO: Extract the Username and Password. This is for BOTH
 		 * GETCERT and CHANGEPW. They both require a Username/Password */
+
+		char *token_separators = (char *) " "; 
+		char *user_or_pass = strtok(request, token_separators);
+	        char *plain= strtok(NULL, token_separators);
+		if(strcmp(user_or_pass, "Username:")==0)
+		{
+		    strncpy(username, plain, strlen(plain)-2); // -2 to get rid of \r\n at the end 
+		    username[strlen(plain)-2] = 0; // null-terminate it
+		}
+		if(strcmp(user_or_pass, "Password:")==0)
+		{
+		    strncpy(password, plain, strlen(plain)-2); // -2 to get rid of \r\n at the end 
+		    password[strlen(plain)-2] = 0; // null-terminate it
+		}
 
 		if(strcmp(request, "\r\n")==0)
 		    break;
 	    }
 
+	    printf("Checking the values of username and password:\n");
+	    printf("Username: %s\n", username);
+	    printf("Password: %s\n", password);
+
 	    /* TODO: AUTHENTICATION:
 	     * Now that we have the Username and Password, we need to verify that
 	     * the credentials are correct. Again, I believe this happens for BOTH
-	     * GETCERT and CHANGEPW */
+	     * GETCERT and CHANGEPW 
+	     *
+	     * */
 
 	    /* TODO: If credentials were correct, then split off into GETCERT and CHANGEPW. */
 
