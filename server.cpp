@@ -236,6 +236,8 @@ int main()
 
 	    if(is_getcert)
 	    {
+		/* TODO: Save the password in a file. */
+
 		/* TODO: Receive the GETCERT CSR from the client. 
 		 * What format will this get sent in? OpenSSL function? */
 		char csr[1000];
@@ -247,8 +249,13 @@ int main()
 		        break;
 		}
 
+		/* TODO: Send the certificate to the client: TLS/encryption/signing cert */
+
+		/* TODO: Store the certificate somewhere on the server side as well. */
+
 	    } else if(is_changepw)
 	    {
+		/* TODO:*/ 
 
 	    }
 

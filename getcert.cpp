@@ -100,9 +100,9 @@ int main(int argc, char **argv)
 		return 3;
 	}
 
-
 	// Send (Username and?) Salted/Hashed Password to the Server
-	char *request = (char *) "GET /getcert HTTP/1.0\r\nUsername: XXXXX\r\nPassword: XXXXX\r\n\r\n";
+	char request[4096];
+	sprintf(request, "GET /getcert HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\n\r\n", argv[1], argv[2]);
 	BIO_puts(buf_io, request);
 	BIO_flush(buf_io);
 
