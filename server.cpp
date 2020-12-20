@@ -198,36 +198,59 @@ int main()
             //BIO_puts(client_ctx->buf_io, "Hello world!\r\nTest\r\n\r\n");
 	    //BIO_flush(client_ctx->buf_io);
 
-	    // Read all headers first, to determine which client is connecting
 	    char request[1000];
-	    int iteration = 0;
-	    while(1)
-	    {
-		BIO_gets(client_ctx->buf_io, request, 100);
-		if (iteration == 0)
-		{
-			char *client_name = request;
-			client_name+=5;
-			client_name[8] = 0;
-			printf(client_name);
-			if(strncmp(request, "getcert", 7)
-		}
-		if(strcmp(buf, "\r\n")==0)
-		    break;
-		iteration++;
-	    }
+	    int is_getcert = 0;
+	    int is_changepw = 0;
 
-	    // Read GET request (Username + Password) from the client
-	    /* 
+	    // Read the first line of the request to determine which client is connecting
+            BIO_gets(client_ctx->buf_io, request, 100);
+	    printf(request);
+	    char *token_separators = (char *) " "; 
+	    char *method = strtok(request, token_separators);
+	    char *client_name = strtok(NULL, token_separators);
+	    client_name++; // Move past the "/" 
+	    if(strcmp(client_name, "getcert")==0)
+		is_getcert = 1;
+	    if(strcmp(client_name, "changepw")==0)
+		is_changepw = 1;
+
+	    // Read the rest of the GET request (Username + Password) from the client
 	    while(1)
 	    {
 		BIO_gets(client_ctx->buf_io, request, 100);
 		printf(request);
-		if(strcmp(buf, "\r\n")==0)
+
+		/* TODO: Extract the Username and Password. This is for BOTH
+		 * GETCERT and CHANGEPW. They both require a Username/Password */
+
+		if(strcmp(request, "\r\n")==0)
 		    break;
 	    }
-	    */
 
+	    /* TODO: AUTHENTICATION:
+	     * Now that we have the Username and Password, we need to verify that
+	     * the credentials are correct. Again, I believe this happens for BOTH
+	     * GETCERT and CHANGEPW */
+
+	    /* TODO: If credentials were correct, then split off into GETCERT and CHANGEPW. */
+
+	    if(is_getcert)
+	    {
+		/* TODO: Receive the GETCERT CSR from the client. 
+		 * What format will this get sent in? OpenSSL function? */
+		char csr[1000];
+		while(1)
+		{
+		    BIO_gets(client_ctx->buf_io, csr, 100);
+       		    printf(csr);
+		    if(strcmp(request, "\r\n")==0)
+		        break;
+		}
+
+	    } else if(is_changepw)
+	    {
+
+	    }
 
             ssl_client_cleanup(client_ctx);
         } 
@@ -235,6 +258,8 @@ int main()
         if (FD_ISSET(servsock_cert, &fds)
             && ssl_client_accept(client_ctx, ctx, servsock_cert, 1) == 0)
         {
+	    /* TODO: This section is for SENDMSG and RECVMSG */
+
 	    char buf[1000];
             // client auth using certificate
 	    //printf("Sending Hello world\n");
