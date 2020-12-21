@@ -123,16 +123,33 @@ int main(int argc, char **argv)
 
 	/* ===================== Send the Username, Password, and PUBLIC key to the server ===================== */ 
 
-	// Send Username and Plain Password to the Server
+	// Send Username and Plain Password to the server as header lines
 	char request[4096];
 	sprintf(request, "GET /getcert HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\n\r\n", argv[1], argv[2]);
 	BIO_puts(buf_io, request);
 	BIO_flush(buf_io);
 
+	// Send the content of the PUBLIC key in the body 
+	// What's the best way to send the public key to the server?
+
+	/*
+	size_t freadresult;
+	char buffer[1000];
+	FILE *f = fopen("certs/ca/client/client-pub.key.pem", "rb");
+	while((freadresult = fread(buffer, 1, 1000, f)) > 0)
+	{
+	    printf("%s\n", buffer);
+	    BIO_puts(buf_io, buffer);
+	    BIO_flush(buf_io);
+	}
+
+	fclose(f);
+	*/
+
 	/* ================================== Send the CSR to the server =============================== */ 
 
-	// Send a CSR to the server 
-	// TODO: How do I do this? Might have to use OpenSSL functions
+	// Send a CSR to the server, server will write it into a file 
+	// TODO
 	char *csr = (char *) "Send the CSR here\r\n\r\n";
 	BIO_puts(buf_io, csr);
 	BIO_flush(buf_io);
