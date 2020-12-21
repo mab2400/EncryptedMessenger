@@ -256,8 +256,7 @@ int main()
 	    while(1)
 	    {
 		BIO_gets(client_ctx->buf_io, request, 100);
-		printf("%s\n", request);
-
+		printf("%s", request);
 		if(strcmp(request, "\r\n")==0)
 		    break;
 	    }

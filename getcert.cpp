@@ -130,26 +130,14 @@ int main(int argc, char **argv)
 	BIO_flush(buf_io);
 
 	// Send the content of the CSR in the rest of the body 
-	/*
 	size_t freadresult;
 	char buffer[1000];
 	FILE *f = fopen("certs/ca/intermediate/csr/client.csr.pem", "r");
-	if (f == NULL)
-		printf("file not found\n");
 	while((freadresult = fread(buffer, 1, 1000, f)) > 0)
-	{
 	    SSL_write(ssl, buffer, freadresult);
-	    //BIO_puts(buf_io, buffer);
-	    //BIO_flush(buf_io);
-	}
-
 	fclose(f);
-	*/
 
-	/* ================================== Send the CSR to the server =============================== */ 
-
-	// Send a CSR to the server, server will write it into a file 
-	// TODO
+	/* ============================= RANDOM STUFF (can ignore / use as necessary) ======= */
 	char *csr = (char *) "Send the CSR here\r\n\r\n";
 	BIO_puts(buf_io, csr);
 	BIO_flush(buf_io);
