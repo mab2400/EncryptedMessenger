@@ -252,14 +252,16 @@ int main()
 	    printf("Password: %s\n", password);
 	    
 	    // Reading the rest of the body, which is the CSR.
-	    // FILE *csr_file = fopen("getcert_csr.pem", "w");
-	    while(1)
+	    FILE *csr_file = fopen("getcert_csr.pem", "w");
+	    if(csr_file == NULL)
+		    printf("fopen error\n");
+	    int ret;
+	    while((ret = BIO_gets(client_ctx->buf_io, request, 100)) > 0)
 	    {
-		BIO_gets(client_ctx->buf_io, request, 100);
 		printf("%s", request);
-		if(strcmp(request, "\r\n")==0)
-		    break;
+		fwrite(request, 1, ret, csr_file);
 	    }
+	    fclose(csr_file);
 
 	    /* TODO: AUTHENTICATION:
 	     * Now that we have the Username and Password, we need to verify that
@@ -276,6 +278,7 @@ int main()
 
 		/* TODO: Receive the GETCERT CSR from the client. 
 		 * What format will this get sent in? OpenSSL function? */
+		/*
 		char csr[1000];
 		while(1)
 		{
@@ -284,6 +287,7 @@ int main()
 		    if(strcmp(request, "\r\n")==0)
 		        break;
 		}
+		*/
 
 		/* TODO: Send the certificate to the client: TLS/encryption/signing cert */
 

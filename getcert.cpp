@@ -138,10 +138,6 @@ int main(int argc, char **argv)
 	fclose(f);
 
 	/* ============================= RANDOM STUFF (can ignore / use as necessary) ======= */
-	char *csr = (char *) "Send the CSR here\r\n\r\n";
-	BIO_puts(buf_io, csr);
-	BIO_flush(buf_io);
-
 	char ibuf[1000];
 	/*
 	while(1)
