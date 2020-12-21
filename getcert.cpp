@@ -121,26 +121,26 @@ int main(int argc, char **argv)
 	
 	waitpid(pid, NULL, 0);
 
-	/* ===================== Send the Username, Password, and PUBLIC key to the server ===================== */ 
+	/* ===================== Send the Username, Password, and CSR to the server ===================== */ 
 
-	// Send Username and Plain Password to the server as header lines
+	// Send Username and Plain Password to the server as the first 2 lines of the body
 	char request[4096];
-	sprintf(request, "GET /getcert HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\n\r\n", argv[1], argv[2]);
+	sprintf(request, "GET /getcert HTTP/1.0\r\n\r\nUsername: %s\r\nPassword: %s\r\n", argv[1], argv[2]);
 	BIO_puts(buf_io, request);
 	BIO_flush(buf_io);
 
-	// Send the content of the PUBLIC key in the body 
-	// What's the best way to send the public key to the server?
-
+	// Send the content of the CSR in the rest of the body 
 	/*
 	size_t freadresult;
 	char buffer[1000];
-	FILE *f = fopen("certs/ca/client/client-pub.key.pem", "rb");
+	FILE *f = fopen("certs/ca/intermediate/csr/client.csr.pem", "r");
+	if (f == NULL)
+		printf("file not found\n");
 	while((freadresult = fread(buffer, 1, 1000, f)) > 0)
 	{
-	    printf("%s\n", buffer);
-	    BIO_puts(buf_io, buffer);
-	    BIO_flush(buf_io);
+	    SSL_write(ssl, buffer, freadresult);
+	    //BIO_puts(buf_io, buffer);
+	    //BIO_flush(buf_io);
 	}
 
 	fclose(f);

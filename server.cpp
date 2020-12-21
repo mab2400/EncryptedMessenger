@@ -214,11 +214,20 @@ int main()
 	    if(strcmp(client_name, "changepw")==0)
 		is_changepw = 1;
 
-	    // Read the rest of the GET request (Username + Password) from the client
+	    // Read the second line, which should be a blank line.
+	    BIO_gets(client_ctx->buf_io, request, 100);
+	    if(strcmp(request, "\r\n")!=0)
+		exit(1);
+
+	    // Read the request BODY (Username + Password) from the client
 	    char username[100];
 	    char password[100];
+	    int iteration = 1;
 	    while(1)
 	    {
+		if(iteration > 2) // Only want to read the first 2 lines of the body
+		    break;
+
 		BIO_gets(client_ctx->buf_io, request, 100);
 
 		/* Extracting the username and password from the request: */
@@ -236,13 +245,22 @@ int main()
 		    strncpy(password, plain, strlen(plain)-2); // -2 to get rid of \r\n at the end 
 		    password[strlen(plain)-2] = 0; // null-terminate it
 		}
+		iteration++;
+	    }
+
+	    printf("Username: %s\n", username);
+	    printf("Password: %s\n", password);
+	    
+	    // Reading the rest of the body, which is the CSR.
+	    // FILE *csr_file = fopen("getcert_csr.pem", "w");
+	    while(1)
+	    {
+		BIO_gets(client_ctx->buf_io, request, 100);
+		printf("%s\n", request);
 
 		if(strcmp(request, "\r\n")==0)
 		    break;
 	    }
-
-	    //printf("Username: %s\n", username);
-	    //printf("Password: %s\n", password);
 
 	    /* TODO: AUTHENTICATION:
 	     * Now that we have the Username and Password, we need to verify that
