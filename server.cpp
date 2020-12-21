@@ -221,8 +221,7 @@ int main()
 	    {
 		BIO_gets(client_ctx->buf_io, request, 100);
 
-		/* TODO: Extract the Username and Password. This is for BOTH
-		 * GETCERT and CHANGEPW. They both require a Username/Password */
+		/* Extracting the username and password from the request: */
 
 		char *token_separators = (char *) " "; 
 		char *user_or_pass = strtok(request, token_separators);
@@ -242,9 +241,8 @@ int main()
 		    break;
 	    }
 
-	    printf("Checking the values of username and password:\n");
-	    printf("Username: %s\n", username);
-	    printf("Password: %s\n", password);
+	    //printf("Username: %s\n", username);
+	    //printf("Password: %s\n", password);
 
 	    /* TODO: AUTHENTICATION:
 	     * Now that we have the Username and Password, we need to verify that
@@ -287,6 +285,8 @@ int main()
             && ssl_client_accept(client_ctx, ctx, servsock_cert, 1) == 0)
         {
 	    /* TODO: This section is for SENDMSG and RECVMSG */
+	    /* Code samples that might be helpful:
+	     * - see cms_ver.c for verifying the client certificate */
 
 	    char buf[1000];
             // client auth using certificate
@@ -296,6 +296,7 @@ int main()
 	    buf[9] = 0;
 	    printf(buf);
             ssl_client_cleanup(client_ctx);
+
         }
     
     }
