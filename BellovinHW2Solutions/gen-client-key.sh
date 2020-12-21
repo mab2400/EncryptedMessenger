@@ -14,6 +14,3 @@ openssl rsa -in client/client-priv.key.pem -pubout -out client/client-pub.key.pe
 openssl req -config intermediate/openssl-inter2.cnf \
             -new -sha256 -out intermediate/csr/client.csr.pem \
             -key client/client-priv.key.pem \
-
-chmod 400 client/client-priv.key.pem
-chmod 400 client/client-pub.key.pem

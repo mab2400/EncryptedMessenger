@@ -11,6 +11,7 @@
 #include <strings.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/socket.h>
 
 #include <openssl/ssl.h>
@@ -100,11 +101,35 @@ int main(int argc, char **argv)
 		return 3;
 	}
 
+	/* ===================== Generate the PUBLIC/PRIVATE keys and CSR ===================== */ 
+
+ 	pid_t pid = fork();
+	if (pid < 0) 
+	{
+	    fprintf(stderr, "fork failed\n");
+	    exit(1);
+	} else if (pid == 0) {
+	    /* The shell script creates the following files:
+	     * 1) certs/ca/client/client-pub.key.pem          --> PUBLIC KEY
+	     * 2) certs/ca/client/private/client-priv.key.pem --> PRIVATE KEY
+	     * 3) certs/ca/intermediate/csr/client.csr.pem    --> CSR 
+	     */
+	    execl("./BellovinHW2Solutions/gen-client-key.sh", "BellovinHW2Solutions/gen-client-key.sh", (char *) 0);
+	    fprintf(stderr, "execl failed\n");
+	    exit(1);
+	}
+	
+	waitpid(pid, NULL, 0);
+
+	/* ===================== Send the Username, Password, and PUBLIC key to the server ===================== */ 
+
 	// Send Username and Plain Password to the Server
 	char request[4096];
 	sprintf(request, "GET /getcert HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\n\r\n", argv[1], argv[2]);
 	BIO_puts(buf_io, request);
 	BIO_flush(buf_io);
+
+	/* ================================== Send the CSR to the server =============================== */ 
 
 	// Send a CSR to the server 
 	// TODO: How do I do this? Might have to use OpenSSL functions
@@ -123,7 +148,8 @@ int main(int argc, char **argv)
 	}
 	*/
 
-	// FREE!
+	/* ================================== Free memory structures =============================== */ 
+
         BIO_free_all(buf_io);
 	SSL_CTX_free(ctx); 
 	return 0;
