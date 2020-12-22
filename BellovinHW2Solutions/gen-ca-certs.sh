@@ -14,7 +14,6 @@ touch index.txt
 echo 1000 > serial
 cd ../..
 cp openssl-root.cnf certs/ca/openssl-root.cnf
-cp openssl-root2.cnf certs/ca/openssl-root2.cnf
 cd certs/ca
 openssl genpkey -out private/ca.key.pem -outform PEM -pass env:PASS -aes256 -algorithm RSA -pkeyopt rsa_keygen_bits:4096
 chmod 400 private/ca.key.pem
@@ -33,7 +32,6 @@ echo 1000 > serial
 echo 1000 > crlnumber
 cd ../../..
 cp openssl-inter.cnf certs/ca/intermediate/openssl-inter.cnf
-cp openssl-inter2.cnf certs/ca/intermediate/openssl-inter2.cnf
 cd certs/ca
 openssl genpkey -out intermediate/private/intermediate.key.pem -outform PEM -pass env:INTER_PASS -aes256 -algorithm RSA -pkeyopt rsa_keygen_bits:4096
 chmod 400 intermediate/private/intermediate.key.pem

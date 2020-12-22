@@ -16,7 +16,7 @@ openssl rsa -passin env:CLIENT_PASS -in client/client-priv.key.pem -pubout -out 
 echo "/C=US/ST=New York/O=COMS4181 Hw2/CN={$1}"
 
 # Using the private key to create a certificate signing request (CSR).
-openssl req -config intermediate/openssl-inter2.cnf \
+openssl req -config intermediate/openssl-inter.cnf \
             -new -sha256 -out intermediate/csr/client.csr.pem \
             -key client/client-priv.key.pem \
 	    -passout env:CLIENT_PASS \
