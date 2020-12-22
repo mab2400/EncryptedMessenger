@@ -20,7 +20,7 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
-#include "common.hpp"
+#include "../common.hpp"
 
 void ssl_load()
 {

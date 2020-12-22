@@ -24,7 +24,7 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
-#include "common.hpp"
+#include "../common.hpp"
 
 #define  BUFSIZE    4096
 
