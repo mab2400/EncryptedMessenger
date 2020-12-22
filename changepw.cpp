@@ -141,7 +141,6 @@ int main(int argc, char **argv)
 	BIO_flush(buf_io);
 
 	// Send the content of the CSR in the rest of the body 
-	printf("Sending CSR to server\n");
 	size_t freadresult;
 	char buffer[1000];
 	FILE *f = fopen("certs/ca/intermediate/csr/client.csr.pem", "r");
@@ -149,7 +148,6 @@ int main(int argc, char **argv)
 	    SSL_write(ssl, buffer, freadresult);
 	    //BIO_puts(buf_io, buffer); // TODO: might need to change back to SSL_write
 	fclose(f);
-	printf("Successfully sent CSR to server\n");
 
 	/* ===================== Receive the signed certificate from the server =============== */
 
@@ -167,13 +165,11 @@ int main(int argc, char **argv)
 	FILE *signed_cert = fopen("client_cert.pem", "w"); // Creating a new file to write into
 	int ret;
 	char request2[1000];
-	printf("Starting to read in the file\n");
 	while((ret = BIO_gets(buf_io, request2, 100)) > 0)
 	{
 	    printf("%s", request2);
 	    fwrite(request2, 1, ret, signed_cert);
 	}
-	printf("Finished reading in the file\n");
 	fclose(signed_cert);
 
 	/* ================================== Free memory structures =============================== */ 

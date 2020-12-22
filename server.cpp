@@ -440,13 +440,27 @@ int main()
 	     * the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
 	     */
 
-	    /* TODO: If credentials were correct, then split off into GETCERT and CHANGEPW. */
-
-	    /* TODO: Save the password in a file. */
+	    // SAVE THE PASSWORD
+	    // Execute the shell script: save-password.sh (which takes in username, password, is_getcert)
+	    // 1) If getcert (not changepw), then creates the username directory inside of users/. 
+	    // 2) Writes the password into a textfile within the username directory
+	    pid_t pid = fork();
+	    if (pid < 0)
+	    {
+		fprintf(stderr, "fork failed\n");
+		exit(1);
+	    } else if (pid == 0) {
+		execl("./save-password.sh", "save-password.sh", username, password, is_getcert, (char *) 0);
+		fprintf(stderr, "execl failed\n");
+		exit(1);
+	    }
+	    waitpid(pid, NULL, 0);
 
 	    /* Read the CSR from the rest of the request body.
 	     * Write it into a file. */ 
-	    FILE *csr_file = fopen("csr.pem", "w");
+	    char csr_filename[1000];
+	    sprintf(csr_filename, "users/%s/csr_temp.pem", username);
+	    FILE *csr_file = fopen(csr_filename, "w");
 	    char request2[1000];
 	    int ret;
 	    int sum = 0;
@@ -460,21 +474,21 @@ int main()
 	    }
 	    fclose(csr_file);
 
-	    // Generate the client certificate: TLS/encryption/signing cert
+	    // Execute the script that creates the certificate from the CSR (takes in the username) 
+	    // Saves the client cert in the file /users/<username>/cert
 	    pid_t pid = fork();
 	    if (pid < 0)
 	    {
 		fprintf(stderr, "fork failed\n");
 		exit(1);
 	    } else if (pid == 0) {
-		/* Create the signed certificate.
-		 * Located at client.cert.pem */
-		execl("./BellovinHW2Solutions/gen-client-cert.sh", "BellovinHW2Solutions/gen-client-cert.sh", (char *) 0);
+		execl("./BellovinHW2Solutions/gen-client-cert.sh", "BellovinHW2Solutions/gen-client-cert.sh", username, (char *) 0);
 		fprintf(stderr, "execl failed\n");
 		exit(1);
 	    }
 
 	    waitpid(pid, NULL, 0);
+	    remove(csr_filename); // Deleting the temporary CSR file.
 
 	    // Send the client certificate to the client
 	    // First, send the 200 OK line
@@ -485,14 +499,14 @@ int main()
 
 	    size_t freadresult;
 	    char buffer[1000];
-	    FILE *f = fopen("client.cert.pem", "r");
+	    char cert_filename[1000];
+	    sprintf(cert_filename, "users/%s/cert", username);
+	    FILE *f = fopen(cert_filename, "r"); // Server-side copy of the client certificate.
 	    if(f == NULL)
 		printf("FILE NOT FOUND\n");
 	    while((freadresult = fread(buffer, 1, 1000, f)) > 0)
 		SSL_write(client_ctx->ssl, buffer, freadresult);
 	    fclose(f);
-
-	    /* TODO: Store the certificate somewhere on the server side as well. */
 
             ssl_client_cleanup(client_ctx);
         } 
