@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
 
 #include <algorithm>
 
@@ -214,7 +217,13 @@ int main()
 	    if(strcmp(client_name, "changepw")==0)
 		is_changepw = 1;
 
-	    // Read the second line, which should be a blank line.
+	    // Read the second line, aka the Content-Length for the CSR.
+	    BIO_gets(client_ctx->buf_io, request, 100);
+	    char *content_length_word = strtok(request, token_separators);
+	    char *c_l = strtok(NULL, token_separators);
+	    int csr_length = atoi(c_l); 
+
+	    // Read the third line, which should be a blank line.
 	    BIO_gets(client_ctx->buf_io, request, 100);
 	    if(strcmp(request, "\r\n")!=0)
 		exit(1);
@@ -231,8 +240,6 @@ int main()
 		BIO_gets(client_ctx->buf_io, request, 100);
 
 		/* Extracting the username and password from the request: */
-
-		char *token_separators = (char *) " "; 
 		char *user_or_pass = strtok(request, token_separators);
 	        char *plain= strtok(NULL, token_separators);
 		if(strcmp(user_or_pass, "Username:")==0)
@@ -248,20 +255,9 @@ int main()
 		iteration++;
 	    }
 
+	    printf("Content-Length: %d\n", csr_length);
 	    printf("Username: %s\n", username);
 	    printf("Password: %s\n", password);
-	    
-	    // Reading the rest of the body, which is the CSR.
-	    FILE *csr_file = fopen("getcert_csr.pem", "w");
-	    if(csr_file == NULL)
-		    printf("fopen error\n");
-	    int ret;
-	    while((ret = BIO_gets(client_ctx->buf_io, request, 100)) > 0)
-	    {
-		printf("%s", request);
-		fwrite(request, 1, ret, csr_file);
-	    }
-	    fclose(csr_file);
 
 	    /* TODO: AUTHENTICATION:
 	     * Now that we have the Username and Password, we need to verify that
@@ -276,25 +272,62 @@ int main()
 	    {
 		/* TODO: Save the password in a file. */
 
-		/* TODO: Receive the GETCERT CSR from the client. 
-		 * What format will this get sent in? OpenSSL function? */
-		/*
-		char csr[1000];
-		while(1)
-		{
-		    BIO_gets(client_ctx->buf_io, csr, 100);
-       		    printf(csr);
-		    if(strcmp(request, "\r\n")==0)
-		        break;
-		}
-		*/
+		/* Read the GETCERT CSR from the rest of the request body.
+		 * Write it into a file. */ 
+		printf("Server is receiving CSR from client\n");
+	        FILE *csr_file = fopen("getcert_csr.pem", "w");
+		char request2[1000];
+	        int ret;
+		int sum = 0;
+	        while((ret = BIO_gets(client_ctx->buf_io, request2, 100)) > 0)
+	        {
+		    sum += ret;
+		    printf("%s", request2);
+		    fwrite(request2, 1, ret, csr_file);
+		    if(sum == csr_length)
+			break;
+	        }
+	        fclose(csr_file);
+		printf("Server received the CSR from the client.\n");
 
-		/* TODO: Send the certificate to the client: TLS/encryption/signing cert */
+		// Generate the client certificate: TLS/encryption/signing cert
+		pid_t pid = fork();
+		if (pid < 0)
+		{
+		    fprintf(stderr, "fork failed\n");
+		    exit(1);
+		} else if (pid == 0) {
+		    /* Create the signed certificate.
+		     * Located at getcert.cert.pem */
+		    execl("./BellovinHW2Solutions/gen-client-cert.sh", "BellovinHW2Solutions/gen-client-cert.sh", (char *) 0);
+		    fprintf(stderr, "execl failed\n");
+		    exit(1);
+		}
+
+		waitpid(pid, NULL, 0);
+
+		printf("Successfully generated cert. Sending the client cert from the server: \n");
+
+		// Send the client certificate to the client
+		// First, send the 200 OK line
+		char line[1000];
+		sprintf(line, "HTTP/1.1 200 OK\r\n\r\n");
+		BIO_puts(client_ctx->buf_io, line);
+		BIO_flush(client_ctx->buf_io);
+
+		size_t freadresult;
+		char buffer[1000];
+		FILE *f = fopen("getcert.cert.pem", "r");
+		if(f == NULL)
+		    printf("FILE NOT FOUND\n");
+		while((freadresult = fread(buffer, 1, 1000, f)) > 0)
+		    SSL_write(client_ctx->ssl, buffer, freadresult);
+		fclose(f);
+		printf("Finished sending the client sert.\n");
 
 		/* TODO: Store the certificate somewhere on the server side as well. */
 
-	    } else if(is_changepw)
-	    {
+	    } else if(is_changepw) {
 		/* TODO:*/ 
 
 	    }

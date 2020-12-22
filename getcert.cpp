@@ -123,31 +123,59 @@ int main(int argc, char **argv)
 
 	/* ===================== Send the Username, Password, and CSR to the server ===================== */ 
 
+	// First, calculate the size of the CSR file
+	FILE* fp = fopen("certs/ca/intermediate/csr/client.csr.pem", "r");
+	if (fp == NULL) {
+	    printf("File Not Found!\n");
+	    return -1;
+	}
+	fseek(fp, 0L, SEEK_END);
+	int res = ftell(fp);
+	fclose(fp);
+
 	// Send Username and Plain Password to the server as the first 2 lines of the body
 	char request[4096];
-	sprintf(request, "GET /getcert HTTP/1.0\r\n\r\nUsername: %s\r\nPassword: %s\r\n", argv[1], argv[2]);
+	sprintf(request, "GET /getcert HTTP/1.0\r\nContent-Length: %d\r\n\r\nUsername: %s\r\nPassword: %s\r\n", res, argv[1], argv[2]);
+	printf(request);
 	BIO_puts(buf_io, request);
 	BIO_flush(buf_io);
 
 	// Send the content of the CSR in the rest of the body 
+	printf("Sending CSR to server\n");
 	size_t freadresult;
 	char buffer[1000];
 	FILE *f = fopen("certs/ca/intermediate/csr/client.csr.pem", "r");
 	while((freadresult = fread(buffer, 1, 1000, f)) > 0)
 	    SSL_write(ssl, buffer, freadresult);
-	fclose(f);
 
-	/* ============================= RANDOM STUFF (can ignore / use as necessary) ======= */
-	char ibuf[1000];
-	/*
-	while(1)
+	    //BIO_puts(buf_io, buffer); // TODO: might need to change back to SSL_write
+	fclose(f);
+	printf("Successfully sent CSR to server\n");
+
+	/* ===================== Receive the signed certificate from the server =============== */
+
+	// Get the 200 OK line and blank line
+	char line2[1000];
+	int ret1;
+	while((ret1 = BIO_gets(buf_io, line2, 1000)) > 0)
 	{
-	    BIO_gets(buf_io, ibuf, 100);
-	    printf(ibuf);
-	    if(strcmp(ibuf, "\r\n")==0)
-		break;
+	    BIO_gets(buf_io, line2, 1000); 
+	    printf(line2);
+	    if(strcmp(line2, "\r\n")==0)
+	        break;
 	}
-	*/
+
+	FILE *signed_cert = fopen("client_cert.pem", "w"); // Creating a new file to write into
+	int ret;
+	char request2[1000];
+	printf("Starting to read in the file\n");
+	while((ret = BIO_gets(buf_io, request2, 100)) > 0)
+	{
+	    printf("%s", request2);
+	    fwrite(request2, 1, ret, signed_cert);
+	}
+	printf("Finished reading in the file\n");
+	fclose(signed_cert);
 
 	/* ================================== Free memory structures =============================== */ 
 
