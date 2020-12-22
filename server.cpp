@@ -12,6 +12,12 @@
 #include <string>
 #include <stdexcept>
 #include <regex>
+#include <filesystem>
+#include <fstream>
+#include <algorithm>
+#include <sstream>
+#include <iostream>
+#include <cstdio>
 
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
@@ -25,6 +31,8 @@
 #define  CA_CERT      "certs/ca/intermediate/certs/ca-chain.cert.pem"
 #define  SERVER_CERT  "certs/ca/server/certs/server.cert.pem"
 #define  SERVER_KEY   "certs/ca/server/private/server.key.pem"
+
+#define  USERDIR      "users/"
 
 static int should_exit = 0;
 
@@ -170,52 +178,156 @@ void my_select(int servsock_pass, int servsock_cert, fd_set *read_fds) {
            read_fds, NULL, NULL, NULL);
 }
 
+#define  MAX_PENDING      99999
+#define  BIGGEST_USED     0
+#define  SMALLEST_UNUSED  1
+std::string get_msg_fname(std::string recver, int flag)
+{
+    std::stringstream ss;
+    ss << USERDIR << recver << "/pending";
+    
+    auto files = std::filesystem::directory_iterator(ss.str());
+    int fcount = std::distance(begin(files), end(files));
+
+    if (flag == SMALLEST_UNUSED)
+        fcount++;
+    
+    if (fcount >= MAX_PENDING) 
+        throw std::runtime_error("too many pending msgs");
+
+    ss << "/" << std::setfill('0') << std::setw(5) << fcount;
+    return ss.str();
+}
+
 int readline(BIO *bio, std::string& line)
 {
     char buf[1000];
     int r;
-    if ((r = BIO_gets(bio, buf, sizeof(buf))) > 0);
+    if ((r = BIO_gets(bio, buf, sizeof(buf))) > 0)
         line = buf;
     return r;
 }
 
+int writeline(BIO *bio, std::string line)
+{
+    return BIO_puts(bio, line.c_str());
+}
+
+bool is_valid_username(const std::string& username) {
+    for (const auto& entry : std::filesystem::directory_iterator(USERDIR))
+        if (entry.is_directory() && username == entry.path().filename())
+            return true;
+    return false;
+}
+
+/* client tells us who they want the recver to be, we send their cert */
+void handle_sendmsg_1(BIO *clnt,
+                      std::string sender,
+                      std::string recver,
+                      int content_length)
+{
+    if (!is_valid_username(sender))
+        throw std::runtime_error("bad sender username");
+    if (!is_valid_username(recver))
+        throw std::runtime_error("bad recver username");
+
+    std::ifstream file(USERDIR + recver + "/cert.pem");
+    std::stringstream ss;
+
+    ss << file.rdbuf();
+    if (writeline(clnt, ss.str()) <= 0)
+        throw std::runtime_error("could not send recver cert to client");
+}
+
+/* client sends us encrypted message, we put it in recver's pending */
+void handle_sendmsg_2(BIO *clnt,
+                      std::string sender,
+                      std::string recver,
+                      int content_length)
+{
+    if (!is_valid_username(sender))
+        throw std::runtime_error("bad sender username");
+    if (!is_valid_username(recver))
+        throw std::runtime_error("bad recver username");
+    if (content_length <= 0)
+        throw std::runtime_error("bad content-length");
+
+    char *buf = new char[content_length];
+
+    if (BIO_read(clnt, buf, content_length) <= 0)
+        throw std::runtime_error("could not read msg contents from client");
+
+    std::string fname = get_msg_fname(recver, SMALLEST_UNUSED);
+    std::ofstream file(fname);
+    file << std::string(buf);
+
+    delete[] buf;
+}
+
+/* send one encrypted message to client */
+void handle_recvmsg(BIO *clnt, std::string recver)
+{
+    if (!is_valid_username(recver))
+        throw std::runtime_error("bad recver username");
+
+    std::string fname = get_msg_fname(recver, BIGGEST_USED);
+    std::ifstream file(fname);
+    std::stringstream ss;
+
+    ss << file.rdbuf();
+    std::string s = ss.str();
+
+    if (BIO_write(clnt, s.c_str(), s.length()) <= 0)
+        throw std::runtime_error("could not send msg to client");
+    
+    file.close();
+    std::remove(fname.c_str());
+}
+
+/* handle one connection from sendmsg or recvmsg */
 void handle_one_msg_client(BIO *clnt)
 {
     std::string line;
+    auto sender_rgx = std::regex("Sender: *", std::regex_constants::icase);
+    auto recver_rgx = std::regex("Recver: *", std::regex_constants::icase);
+    auto content_length_rgx = std::regex("Content-Length: *", std::regex_constants::icase);
 
     // read first line
     if (readline(clnt, line) <= 0)
-        std::runtime_error("readline failed");
-    int is_sendmsg = (line.find("sendmsg") != std::string::npos);
-    int is_recvmsg = (line.find("recvmsg") != std::string::npos);
+        throw std::runtime_error("readline failed");
+
+    int is_sendmsg_1 = (line.find("POST /sendmsg/1 HTTP") != std::string::npos);
+    int is_sendmsg_2 = (line.find("POST /sendmsg/2 HTTP") != std::string::npos);
+    int is_recvmsg = (line.find("GET /recvmsg HTTP") != std::string::npos);
+
+    std::string sender, recver;
+    int content_length = 0;
 
     // read headers
-    while((readline(clnt, line)) > 0)
+    while((readline(clnt, line)) > 0) {
         if (line != "\r\n")
             break;
-
-    if (is_sendmsg) {
-
-        std::vector<std::string> recvers;
-
-        // read recvers
-        while((readline(clnt, line)) > 0) {
-            if (line == "\r\n")
-                break;
-            recvers.push_back(line);
+        int pos = line.find(":") + 2;
+        if (std::regex_match(line, sender_rgx)) {
+            sender = line.substr(pos);
+            std::cerr << "Sender: " << sender << std::endl;
+        } else if (std::regex_match(line, recver_rgx)) {
+            recver = line.substr(pos);
+            std::cerr << "Recver: " << recver << std::endl;
+        } else if (std::regex_match(line, content_length_rgx)) {
+            content_length = stoi(line.substr(pos));
+            std::cerr << "Content-Length: " << content_length << std::endl;
         }
-
-        // TODO: send recver's certs to client
-
-        // TODO: receive client's message and store
-
-    } else if (is_recvmsg) {
-        
-        // TODO: send client a single encrypted msg, then delete from server
-
-    } else {
-        throw std::runtime_error("HTTP bad first line");
     }
+
+    if (is_sendmsg_1)
+        handle_sendmsg_1(clnt, sender, recver, content_length);
+    else if (is_sendmsg_2)
+        handle_sendmsg_2(clnt, sender, recver, content_length);
+    else if (is_recvmsg)
+        handle_recvmsg(clnt, recver);
+    else
+        throw std::runtime_error("HTTP bad first line");
 }
 
 int main()
@@ -390,7 +502,7 @@ int main()
             && ssl_client_accept(client_ctx, ctx, servsock_cert, 1) == 0)
         {
             // TODO: verify
-	        // see cms_ver.c for verifying the client certificate
+            // see cms_ver.c for verifying the client certificate
 
             handle_one_msg_client(client_ctx->buf_io);
             ssl_client_cleanup(client_ctx);
