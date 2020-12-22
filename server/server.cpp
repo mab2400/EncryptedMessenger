@@ -419,7 +419,9 @@ int main()
 		fprintf(stderr, "fork failed\n");
 		exit(1);
 	    } else if (pid == 0) {
-		execl("./save-password.sh", "save-password.sh", username, password, is_getcert, (char *) 0);
+		char is_getcert_print[100];
+		sprintf(is_getcert_print, "%d", is_getcert);
+		execl("./save-password.sh", "save-password.sh", username, password, is_getcert_print, (char *) 0);
 		fprintf(stderr, "execl failed\n");
 		exit(1);
 	    }
@@ -430,6 +432,8 @@ int main()
 	    char csr_filename[1000];
 	    sprintf(csr_filename, "users/%s/csr_temp.pem", username);
 	    FILE *csr_file = fopen(csr_filename, "w");
+	    if(csr_file == NULL)
+		printf("CSR FILE NOT FOUND\n");
 	    char request2[1000];
 	    int ret;
 	    int sum = 0;

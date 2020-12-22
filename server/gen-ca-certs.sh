@@ -29,10 +29,10 @@ touch index.txt
 echo 1000 > serial
 echo 1000 > crlnumber
 cd ../../..
-cp openssl-inter.cnf certs/ca/intermediate/openssl-inter.cnf
+cp openssl-inter2.cnf certs/ca/intermediate/openssl-inter.cnf
 cd certs/ca
 openssl genpkey -out intermediate/private/intermediate.key.pem -outform PEM -pass env:INTER_PASS -aes256 -algorithm RSA -pkeyopt rsa_keygen_bits:4096
-chmod 400 intermediate/private/intermediate.key.pem
+chmod 444 intermediate/private/intermediate.key.pem
 cd intermediate
 openssl req -config openssl-inter.cnf -key private/intermediate.key.pem -keyform PEM -passin env:INTER_PASS -out csr/intermediate.csr.pem -passout env:INTER_PASS -new -sha256 -subj '/C=US/ST=New York/O=COMS4181 Hw2/CN=Intermediate Cert'
 cd ..
