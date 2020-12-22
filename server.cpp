@@ -396,10 +396,10 @@ int main()
 	    char password[100];
 	    char *pass_setup = strtok(request, token_separators);
 	    char *plain_pass = strtok(NULL, token_separators);
-	    if(strcmp(pass_setup, "Username:")==0)
+	    if(strcmp(pass_setup, "Password:")==0)
 	    {
 		strncpy(password, plain_pass, strlen(plain_pass)-2); // -2 to get rid of \r\n at the end 
-		username[strlen(plain_pass)-2] = 0; // null-terminate it
+		password[strlen(plain_pass)-2] = 0; // null-terminate it
 	    }
 
 	    // Read the next header line, aka the New Password for changepw (blank if getcert).
@@ -407,12 +407,14 @@ int main()
 	    BIO_gets(client_ctx->buf_io, request, 100);
 	    char *new_pass_setup = strtok(request, token_separators);
 	    char *new_password = strtok(NULL, token_separators);
+	    int new_pwd_provided = 0;
 	    if(strcmp(new_pass_setup, "New Password:")==0)
 	    {
-		if(strlen(new_password) > 0)
+		if(strcmp(request, "New Password: \r\n")!=0)
 		{
 		    strncpy(new_pwd, new_password, strlen(new_password)-2); // -2 to get rid of \r\n at the end 
-		    password[strlen(new_password)-2] = 0; // null-terminate it
+		    new_pwd[strlen(new_password)-2] = 0; // null-terminate it
+		    new_pwd_provided = 1;
 		}
 	    }
 
@@ -430,125 +432,67 @@ int main()
 	    printf("Content-Length: %d\n", csr_length);
 	    printf("Username: %s\n", username);
 	    printf("Password: %s\n", password);
-	    printf("New Password: %s\n", new_password);
+	    if(new_pwd_provided)
+	        printf("New Password: %s\n", new_pwd);
 
 	    /* TODO: AUTHENTICATION:
 	     * Now that we have the Username and Password, we need to verify that
-	     * the credentials are correct. Again, I believe this happens for BOTH
-	     * GETCERT and CHANGEPW 
-	     *
-	     * */
+	     * the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
+	     */
 
 	    /* TODO: If credentials were correct, then split off into GETCERT and CHANGEPW. */
 
-	    if(is_getcert)
+	    /* TODO: Save the password in a file. */
+
+	    /* Read the CSR from the rest of the request body.
+	     * Write it into a file. */ 
+	    FILE *csr_file = fopen("csr.pem", "w");
+	    char request2[1000];
+	    int ret;
+	    int sum = 0;
+	    while((ret = BIO_gets(client_ctx->buf_io, request2, 100)) > 0)
 	    {
-		/* TODO: Save the password in a file. */
-
-		/* Read the GETCERT CSR from the rest of the request body.
-		 * Write it into a file. */ 
-	        FILE *csr_file = fopen("getcert_csr.pem", "w");
-		char request2[1000];
-	        int ret;
-		int sum = 0;
-	        while((ret = BIO_gets(client_ctx->buf_io, request2, 100)) > 0)
-	        {
-		    sum += ret;
-		    printf("%s", request2);
-		    fwrite(request2, 1, ret, csr_file);
-		    if(sum == csr_length)
-			break;
-	        }
-	        fclose(csr_file);
-
-		// Generate the client certificate: TLS/encryption/signing cert
-		pid_t pid = fork();
-		if (pid < 0)
-		{
-		    fprintf(stderr, "fork failed\n");
-		    exit(1);
-		} else if (pid == 0) {
-		    /* Create the signed certificate.
-		     * Located at getcert.cert.pem */
-		    execl("./BellovinHW2Solutions/gen-client-cert.sh", "BellovinHW2Solutions/gen-client-cert.sh", (char *) 0);
-		    fprintf(stderr, "execl failed\n");
-		    exit(1);
-		}
-
-		waitpid(pid, NULL, 0);
-
-		// Send the client certificate to the client
-		// First, send the 200 OK line
-		char line[1000];
-		sprintf(line, "HTTP/1.1 200 OK\r\n\r\n");
-		BIO_puts(client_ctx->buf_io, line);
-		BIO_flush(client_ctx->buf_io);
-
-		size_t freadresult;
-		char buffer[1000];
-		FILE *f = fopen("getcert.cert.pem", "r");
-		if(f == NULL)
-		    printf("FILE NOT FOUND\n");
-		while((freadresult = fread(buffer, 1, 1000, f)) > 0)
-		    SSL_write(client_ctx->ssl, buffer, freadresult);
-		fclose(f);
-
-		/* TODO: Store the certificate somewhere on the server side as well. */
-
-	    } else if(is_changepw) {
-
-		/* TODO: Save the new password in a file. */
-
-		/* Read the CHANGEPW CSR from the rest of the request body.
-		 * Write it into a file. */ 
-	        FILE *csr_file = fopen("changepw_csr.pem", "w");
-		char request2[1000];
-	        int ret;
-		int sum = 0;
-	        while((ret = BIO_gets(client_ctx->buf_io, request2, 100)) > 0)
-	        {
-		    sum += ret;
-		    printf("%s", request2);
-		    fwrite(request2, 1, ret, csr_file);
-		    if(sum == csr_length)
-			break;
-	        }
-	        fclose(csr_file);
-
-		// Generate the client certificate: TLS/encryption/signing cert
-		pid_t pid = fork();
-		if (pid < 0)
-		{
-		    fprintf(stderr, "fork failed\n");
-		    exit(1);
-		} else if (pid == 0) {
-		    /* Create the signed certificate.
-		     * Located at getcert.cert.pem */
-		    execl("./BellovinHW2Solutions/gen-client-cert.sh", "BellovinHW2Solutions/gen-client-cert.sh", (char *) 0);
-		    fprintf(stderr, "execl failed\n");
-		    exit(1);
-		}
-
-		waitpid(pid, NULL, 0);
-
-		// Send the client certificate to the client
-		// First, send the 200 OK line
-		char line[1000];
-		sprintf(line, "HTTP/1.1 200 OK\r\n\r\n");
-		BIO_puts(client_ctx->buf_io, line);
-		BIO_flush(client_ctx->buf_io);
-
-		size_t freadresult;
-		char buffer[1000];
-		FILE *f = fopen("getcert.cert.pem", "r");
-		if(f == NULL)
-		    printf("FILE NOT FOUND\n");
-		while((freadresult = fread(buffer, 1, 1000, f)) > 0)
-		    SSL_write(client_ctx->ssl, buffer, freadresult);
-		fclose(f);
-
-		/* TODO: Store the certificate somewhere on the server side as well. */
+		sum += ret;
+		printf("%s", request2);
+		fwrite(request2, 1, ret, csr_file);
+		if(sum == csr_length)
+		    break;
 	    }
+	    fclose(csr_file);
+
+	    // Generate the client certificate: TLS/encryption/signing cert
+	    pid_t pid = fork();
+	    if (pid < 0)
+	    {
+		fprintf(stderr, "fork failed\n");
+		exit(1);
+	    } else if (pid == 0) {
+		/* Create the signed certificate.
+		 * Located at client.cert.pem */
+		execl("./BellovinHW2Solutions/gen-client-cert.sh", "BellovinHW2Solutions/gen-client-cert.sh", (char *) 0);
+		fprintf(stderr, "execl failed\n");
+		exit(1);
+	    }
+
+	    waitpid(pid, NULL, 0);
+
+	    // Send the client certificate to the client
+	    // First, send the 200 OK line
+	    char line[1000];
+	    sprintf(line, "HTTP/1.1 200 OK\r\n\r\n");
+	    BIO_puts(client_ctx->buf_io, line);
+	    BIO_flush(client_ctx->buf_io);
+
+	    size_t freadresult;
+	    char buffer[1000];
+	    FILE *f = fopen("client.cert.pem", "r");
+	    if(f == NULL)
+		printf("FILE NOT FOUND\n");
+	    while((freadresult = fread(buffer, 1, 1000, f)) > 0)
+		SSL_write(client_ctx->ssl, buffer, freadresult);
+	    fclose(f);
+
+	    /* TODO: Store the certificate somewhere on the server side as well. */
 
             ssl_client_cleanup(client_ctx);
         } 
