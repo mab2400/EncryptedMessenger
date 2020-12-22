@@ -22,6 +22,10 @@
 
 #include "common.hpp"
 
+char *hostname;
+char *fname;
+char *sender;
+
 void ssl_load()
 {
     // load ssl algos and error strings
@@ -112,20 +116,24 @@ BIO *myssl_connect(char *hostname, int port, SSL_CTX *ssl_ctx)
 }
 
 /* one GET request to get recver's certificate from server */
-void GET_recver_cert(char *hostname, int port, SSL_CTX *ctx)
+void GET_recver_cert(SSL_CTX *ctx, std::string recver)
 {
     BIO *server = myssl_connect(hostname, CERT_PORT, ctx);
 
     char req[1000];
     snprintf(req, sizeof(req), "GET /sendmsg/1 HTTP/1.0\r\n"
-                               "\r\n"
-                               "GET /sendmsg/1 HTTP/1.0\r\n");
-
+                               "Sender: %s\r\n"
+                               "Recver: %s\r\n"
+                               "\r\n",
+                               sender, recver.c_str());
+    
+    BIO_mywrite(server, std::string(req));
+    
     BIO_free_all(server);
 }
 
 /* one POST request to send encrypted msg to server */
-void POST_msg(char *hostname, int port, std::string fname, SSL_CTX *ctx)
+void POST_msg(SSL_CTX *ctx)
 {
     BIO *server = myssl_connect(hostname, CERT_PORT, ctx);
 
@@ -135,12 +143,14 @@ void POST_msg(char *hostname, int port, std::string fname, SSL_CTX *ctx)
 int main(int argc, char **argv)
 {
     if (argc != 2) {
-        std::cerr << "usage: " << argv[0] << " hostname msg-filename" << std::endl;
+        std::cerr << "usage: " << argv[0] << " hostname msg-filename sender-username" << std::endl;
         exit(1);
     }
 
-    char *hostname = argv[1];
-    char *fname = argv[2];
+    // global vars
+    hostname = argv[1];
+    fname = argv[2];
+    sender = argv[3];
     
     ssl_load();
     SSL_CTX *ctx = create_ssl_ctx();
@@ -148,8 +158,8 @@ int main(int argc, char **argv)
     std::cout << "Enter receivers, one per line, then Ctrl-D:" << std::endl;
     std::string recver;
     while (std::getline(std::cin, recver)) {
-        GET_recver_cert(hostname, CERT_PORT, ctx);
-        POST_msg(hostname, CERT_PORT, fname, ctx);
+        GET_recver_cert(ctx, recver);
+        POST_msg(ctx);
     }
 
     SSL_CTX_free(ctx); 
