@@ -6,6 +6,9 @@
 #include <arpa/inet.h>
 
 #include <algorithm>
+#include <string>
+#include <stdexcept>
+#include <regex>
 
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
@@ -164,6 +167,54 @@ void my_select(int servsock_pass, int servsock_cert, fd_set *read_fds) {
            read_fds, NULL, NULL, NULL);
 }
 
+int readline(BIO *bio, std::string& line)
+{
+    char buf[1000];
+    int r;
+    if ((r = BIO_gets(bio, buf, sizeof(buf))) > 0);
+        line = buf;
+    return r;
+}
+
+void handle_one_msg_client(BIO *clnt)
+{
+    std::string line;
+
+    // read first line
+    if (readline(clnt, line) <= 0)
+        std::runtime_error("readline failed");
+    int is_sendmsg = (line.find("sendmsg") != std::string::npos);
+    int is_recvmsg = (line.find("recvmsg") != std::string::npos);
+
+    // read headers
+    while((readline(clnt, line)) > 0)
+        if (line != "\r\n")
+            break;
+
+    if (is_sendmsg) {
+
+        std::vector<std::string> recvers;
+
+        // read recvers
+        while((readline(clnt, line)) > 0) {
+            if (line == "\r\n")
+                break;
+            recvers.push_back(line);
+        }
+
+        // TODO: send recver's certs to client
+
+        // TODO: receive client's message and store
+
+    } else if (is_recvmsg) {
+        
+        // TODO: send client a single encrypted msg, then delete from server
+
+    } else {
+        throw std::runtime_error("HTTP bad first line");
+    }
+}
+
 int main()
 {
     // Source: http://h30266.www3.hpe.com/odl/axpos/opsys/vmsos84/BA554_90007/ch04s03.html
@@ -305,21 +356,12 @@ int main()
         if (FD_ISSET(servsock_cert, &fds)
             && ssl_client_accept(client_ctx, ctx, servsock_cert, 1) == 0)
         {
-	    /* TODO: This section is for SENDMSG and RECVMSG */
-	    /* Code samples that might be helpful:
-	     * - see cms_ver.c for verifying the client certificate */
+            // TODO: verify
+	        // see cms_ver.c for verifying the client certificate
 
-	    char buf[1000];
-            // client auth using certificate
-	    //printf("Sending Hello world\n");
-            BIO_puts(client_ctx->buf_io, "Hello world!\n");
-	    BIO_gets(client_ctx->buf_io, buf, 10);
-	    buf[9] = 0;
-	    printf(buf);
+            handle_one_msg_client(client_ctx->buf_io);
             ssl_client_cleanup(client_ctx);
-
         }
-    
     }
 
     SSL_CTX_free(ctx);
