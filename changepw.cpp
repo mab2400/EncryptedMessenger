@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 	     * 3) certs/ca/intermediate/csr/client.csr.pem    --> CSR 
 	     */
 	    // NOTE: Pass in argv[3], the new password.
-	    execl("./BellovinHW2Solutions/gen-client-key.sh", "BellovinHW2Solutions/gen-client-key.sh", argv[1], argv[3], (char *) 0);
+	    execl("./BellovinHW2Solutions/gen-client-keys-and-csr.sh", "BellovinHW2Solutions/gen-client-keys-and-csr.sh", argv[1], argv[3], (char *) 0);
 	    fprintf(stderr, "execl failed\n");
 	    exit(1);
 	}
