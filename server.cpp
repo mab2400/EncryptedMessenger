@@ -248,17 +248,12 @@ int main()
         if (FD_ISSET(servsock_pass, &fds) 
             && ssl_client_accept(client_ctx, ctx, servsock_pass, 0) == 0)
         {
-	    // FOR REFERENCE) Send something to the client
-            //BIO_puts(client_ctx->buf_io, "Hello world!\r\nTest\r\n\r\n");
-	    //BIO_flush(client_ctx->buf_io);
-
 	    char request[1000];
 	    int is_getcert = 0;
 	    int is_changepw = 0;
 
 	    // Read the first line of the request to determine which client is connecting
             BIO_gets(client_ctx->buf_io, request, 100);
-	    printf(request);
 	    char *token_separators = (char *) " "; 
 	    char *method = strtok(request, token_separators);
 	    char *client_name = strtok(NULL, token_separators);
@@ -325,7 +320,6 @@ int main()
 
 		/* Read the GETCERT CSR from the rest of the request body.
 		 * Write it into a file. */ 
-		printf("Server is receiving CSR from client\n");
 	        FILE *csr_file = fopen("getcert_csr.pem", "w");
 		char request2[1000];
 	        int ret;
@@ -339,7 +333,6 @@ int main()
 			break;
 	        }
 	        fclose(csr_file);
-		printf("Server received the CSR from the client.\n");
 
 		// Generate the client certificate: TLS/encryption/signing cert
 		pid_t pid = fork();
@@ -357,7 +350,70 @@ int main()
 
 		waitpid(pid, NULL, 0);
 
-		printf("Successfully generated cert. Sending the client cert from the server: \n");
+		// Send the client certificate to the client
+		// First, send the 200 OK line
+		char line[1000];
+		sprintf(line, "HTTP/1.1 200 OK\r\n\r\n");
+		BIO_puts(client_ctx->buf_io, line);
+		BIO_flush(client_ctx->buf_io);
+
+		size_t freadresult;
+		char buffer[1000];
+		FILE *f = fopen("getcert.cert.pem", "r");
+		if(f == NULL)
+		    printf("FILE NOT FOUND\n");
+		while((freadresult = fread(buffer, 1, 1000, f)) > 0)
+		    SSL_write(client_ctx->ssl, buffer, freadresult);
+		fclose(f);
+
+		/* TODO: Store the certificate somewhere on the server side as well. */
+
+	    } else if(is_changepw) {
+
+		// Read the new password (third line of the request body) from the client
+		char new_pwd[100];
+		BIO_gets(client_ctx->buf_io, request, 100);
+		char *new_pass_setup = strtok(request, token_separators);
+	        char *new_password = strtok(NULL, token_separators);
+		if(strcmp(new_pass_setup, "New Password:")==0)
+		{
+		    strncpy(new_pwd, new_password, strlen(new_password)-2); // -2 to get rid of \r\n at the end 
+		    password[strlen(new_password)-2] = 0; // null-terminate it
+		}
+
+		/* TODO: Save the new password in a file. */
+
+		/* Read the CHANGEPW CSR from the rest of the request body.
+		 * Write it into a file. */ 
+	        FILE *csr_file = fopen("changepw_csr.pem", "w");
+		char request2[1000];
+	        int ret;
+		int sum = 0;
+	        while((ret = BIO_gets(client_ctx->buf_io, request2, 100)) > 0)
+	        {
+		    sum += ret;
+		    printf("%s", request2);
+		    fwrite(request2, 1, ret, csr_file);
+		    if(sum == csr_length)
+			break;
+	        }
+	        fclose(csr_file);
+
+		// Generate the client certificate: TLS/encryption/signing cert
+		pid_t pid = fork();
+		if (pid < 0)
+		{
+		    fprintf(stderr, "fork failed\n");
+		    exit(1);
+		} else if (pid == 0) {
+		    /* Create the signed certificate.
+		     * Located at getcert.cert.pem */
+		    execl("./BellovinHW2Solutions/gen-client-cert.sh", "BellovinHW2Solutions/gen-client-cert.sh", (char *) 0);
+		    fprintf(stderr, "execl failed\n");
+		    exit(1);
+		}
+
+		waitpid(pid, NULL, 0);
 
 		// Send the client certificate to the client
 		// First, send the 200 OK line
@@ -374,13 +430,8 @@ int main()
 		while((freadresult = fread(buffer, 1, 1000, f)) > 0)
 		    SSL_write(client_ctx->ssl, buffer, freadresult);
 		fclose(f);
-		printf("Finished sending the client cert.\n");
 
 		/* TODO: Store the certificate somewhere on the server side as well. */
-
-	    } else if(is_changepw) {
-		/* TODO:*/ 
-
 	    }
 
             ssl_client_cleanup(client_ctx);
