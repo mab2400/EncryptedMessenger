@@ -3,5 +3,4 @@ changepw
 getcert
 recvmsg
 sendmsg
-server
 *.o
