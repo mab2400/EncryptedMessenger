@@ -114,7 +114,7 @@ int main(int argc, char **argv)
 	     * 2) certs/ca/client/private/client-priv.key.pem --> PRIVATE KEY
 	     * 3) certs/ca/intermediate/csr/client.csr.pem    --> CSR 
 	     */
-	    execl("./BellovinHW2Solutions/gen-client-keys-and-csr.sh", "BellovinHW2Solutions/gen-client-keys-and-csr.sh", argv[1], argv[2], (char *) 0);
+	    execl("./gen-client-keys-and-csr.sh", "gen-client-keys-and-csr.sh", argv[1], argv[2], (char *) 0);
 	    fprintf(stderr, "execl failed\n");
 	    exit(1);
 	}
@@ -123,7 +123,7 @@ int main(int argc, char **argv)
 
 	/* ===================== Send the Username, Password, and CSR to the server ===================== */ 
 	// First, calculate the size of the CSR file
-	FILE* fp = fopen("certs/ca/intermediate/csr/client.csr.pem", "r");
+	FILE* fp = fopen("client.csr.pem", "r");
 	if (fp == NULL) {
 	    printf("File Not Found!\n");
 	    return -1;
@@ -143,7 +143,7 @@ int main(int argc, char **argv)
 	printf("Sending CSR to server\n");
 	size_t freadresult;
 	char buffer[1000];
-	FILE *f = fopen("certs/ca/intermediate/csr/client.csr.pem", "r");
+	FILE *f = fopen("client.csr.pem", "r");
 	while((freadresult = fread(buffer, 1, 1000, f)) > 0)
 	    SSL_write(ssl, buffer, freadresult);
 	    //BIO_puts(buf_io, buffer); // TODO: might need to change back to SSL_write
