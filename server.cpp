@@ -223,8 +223,7 @@ bool is_valid_username(const std::string& username) {
 /* client tells us who they want the recver to be, we send their cert */
 void handle_sendmsg_1(BIO *clnt,
                       std::string sender,
-                      std::string recver,
-                      int content_length)
+                      std::string recver)
 {
     if (!is_valid_username(sender))
         throw std::runtime_error("bad sender username");
