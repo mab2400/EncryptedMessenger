@@ -20,7 +20,7 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
-#include "common.hpp"
+#include "../common.hpp"
 
 char *hostname;
 char *fname;

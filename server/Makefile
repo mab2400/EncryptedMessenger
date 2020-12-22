@@ -3,22 +3,12 @@ CXXFLAGS=-g -Wall -std=c++17
 LDLIBS=-lssl -lcrypto -lstdc++fs
 	
 
-ALL_PROGRAMS=server getcert changepw sendmsg recvmsg client
+ALL_PROGRAMS=server 
 
 .PHONY: default
 default: $(ALL_PROGRAMS)
 
 server:
-
-getcert:
-
-changepw:
-
-sendmsg:
-
-recvmsg:
-
-client:
 
 .PHONY: clean
 clean:
