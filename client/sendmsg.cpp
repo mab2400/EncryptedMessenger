@@ -127,8 +127,21 @@ void GET_recver_cert(SSL_CTX *ctx, std::string recver)
                                "\r\n",
                                sender, recver.c_str());
     
-    BIO_mywrite(server, std::string(req));
+    // send request to server
+    std::string sreq(req);
+    BIO_mywrite(server, sreq);
     
+    // read first line
+    std::string line;
+    if (BIO_mygets(server, line) <= 0)
+        throw std::runtime_error("BIO_mygets failed");
+    if (line.find("200 OK") == std::string::npos)
+        throw std::runtime_error("Not 200 OK");
+
+    // get recver cert and save it
+    std::string fname = recver + "-cert";
+    BIO_myread_to_file_until_close(server, fname);
+
     BIO_free_all(server);
 }
 

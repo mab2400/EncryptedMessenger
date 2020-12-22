@@ -214,10 +214,11 @@ void handle_sendmsg_1(BIO *clnt,
         throw std::runtime_error("bad recver username");
 
     std::string cert_fname = USERDIR + recver + "/cert.pem";
-    std::string cert = file_to_string(cert_fname);
+    std::string cert = read_file_into_string(cert_fname);
 
-    if (BIO_mywrite(clnt, cert) <= 0)
-        throw std::runtime_error("could not send recver cert to client");
+    std::string ok("HTTP/1.0 200 OK\r\n\r\n");
+    BIO_mywrite(clnt, ok);
+    BIO_mywrite(clnt, cert);
 }
 
 /* client sends us encrypted message, we put it in recver's pending */
@@ -239,8 +240,8 @@ void handle_sendmsg_2(BIO *clnt,
         throw std::runtime_error("could not read msg contents from client");
 
     std::string fname = get_msg_fname(recver, SMALLEST_UNUSED);
-    std::ofstream file(fname);
-    file << std::string(buf.get());
+    write_string_to_file(fname, std::string(buf.get()));
+    BIO_mywrite(clnt, "HTTP/1.0 200 OK\r\n\r\n");
 }
 
 /* send one encrypted message to client */
@@ -250,11 +251,8 @@ void handle_recvmsg(BIO *clnt, std::string recver)
         throw std::runtime_error("bad recver username");
 
     std::string msg_fname = get_msg_fname(recver, BIGGEST_USED);
-    std::string msg = file_to_string(msg_fname);
-
-    if (BIO_mywrite(clnt, msg) <= 0)
-        throw std::runtime_error("could not send msg to client");
-    
+    std::string msg = read_file_into_string(msg_fname);
+    BIO_mywrite(clnt, msg);
     std::remove(msg_fname.c_str());
 }
 
