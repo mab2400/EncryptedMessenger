@@ -100,11 +100,8 @@ int create_server_socket(int port)
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port        = htons(port);
     
-    //fprintf(stderr, "Attempting bind() on PORT %d\n", port);
     if (bind(servsock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
         die("bind() failed");
-
-    //fprintf(stderr, "bind() succeeded on PORT %d\n", port);
     
     if (listen(servsock, 5) < 0)
         die("listen() failed");
@@ -136,11 +133,10 @@ int ssl_client_accept(struct client_ctx *cctx,
         return -1;
     }
 
-    printf("Connection from %s\n", inet_ntoa(clntaddr.sin_addr));
+    fprintf(stderr, "Connection from %s\n", inet_ntoa(clntaddr.sin_addr));
 
     cctx->ssl = SSL_new(ssl_ctx);
     SSL_set_fd(cctx->ssl, clntsock);
-    //printf("SSL_set_fd succeeded\n");
 
     if (should_verify_client_cert)
         SSL_set_verify(cctx->ssl, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
@@ -155,7 +151,6 @@ int ssl_client_accept(struct client_ctx *cctx,
         close(clntsock);
         return -1;
     }
-    //printf("SSL_accept() succeeded\n");
 
     BIO *sbio;
     sbio = BIO_new(BIO_s_socket());
@@ -178,9 +173,10 @@ void my_select(int servsock_pass, int servsock_cert, fd_set *read_fds) {
            read_fds, NULL, NULL, NULL);
 }
 
-#define  MAX_PENDING      99999
+#define  MAX_PENDING      99999 // max pending msgs for a user
 #define  BIGGEST_USED     0
 #define  SMALLEST_UNUSED  1
+/* e.g. returns stuff like "00001", "00002", etc. */
 std::string get_msg_fname(std::string recver, int flag)
 {
     std::stringstream ss;
@@ -199,20 +195,37 @@ std::string get_msg_fname(std::string recver, int flag)
     return ss.str();
 }
 
-int readline(BIO *bio, std::string& line)
+/* reads one line from bio into std::string (removes trailing newline) */
+int BIO_mygets(BIO *bio, std::string& line)
 {
     char buf[1000];
     int r;
     if ((r = BIO_gets(bio, buf, sizeof(buf))) > 0)
         line = buf;
+    
+    // remove all trailing whitespace
+    // src: techiedelight.com/trim-string-cpp-remove-leading-trailing-spaces/ 
+    line = std::regex_replace(line, std::regex("\\s+$"), std::string(""));
+
     return r;
 }
 
-int writeline(BIO *bio, std::string line)
+/* write data from std::string to bio */
+int BIO_mywrite(BIO *bio, std::string data)
 {
-    return BIO_puts(bio, line.c_str());
+    return BIO_write(bio, data.data(), data.length());
 }
 
+/* read entire file contents into std::string */
+std::string file_to_string(std::string fname)
+{
+    std::ifstream file(fname);
+    std::stringstream ss;
+    ss << file.rdbuf();
+    return ss.str();
+}
+
+/* does this username exist in USERDIR? */
 bool is_valid_username(const std::string& username) {
     for (const auto& entry : std::filesystem::directory_iterator(USERDIR))
         if (entry.is_directory() && username == entry.path().filename())
@@ -230,11 +243,10 @@ void handle_sendmsg_1(BIO *clnt,
     if (!is_valid_username(recver))
         throw std::runtime_error("bad recver username");
 
-    std::ifstream file(USERDIR + recver + "/cert.pem");
-    std::stringstream ss;
+    std::string cert_fname = USERDIR + recver + "/cert.pem";
+    std::string cert = file_to_string(cert_fname);
 
-    ss << file.rdbuf();
-    if (writeline(clnt, ss.str()) <= 0)
+    if (BIO_mywrite(clnt, cert) <= 0)
         throw std::runtime_error("could not send recver cert to client");
 }
 
@@ -251,16 +263,14 @@ void handle_sendmsg_2(BIO *clnt,
     if (content_length <= 0)
         throw std::runtime_error("bad content-length");
 
-    char *buf = new char[content_length];
+    std::unique_ptr<char[]> buf(new char[content_length]);
 
-    if (BIO_read(clnt, buf, content_length) <= 0)
+    if (BIO_read(clnt, buf.get(), content_length) <= 0)
         throw std::runtime_error("could not read msg contents from client");
 
     std::string fname = get_msg_fname(recver, SMALLEST_UNUSED);
     std::ofstream file(fname);
-    file << std::string(buf);
-
-    delete[] buf;
+    file << std::string(buf.get());
 }
 
 /* send one encrypted message to client */
@@ -269,18 +279,13 @@ void handle_recvmsg(BIO *clnt, std::string recver)
     if (!is_valid_username(recver))
         throw std::runtime_error("bad recver username");
 
-    std::string fname = get_msg_fname(recver, BIGGEST_USED);
-    std::ifstream file(fname);
-    std::stringstream ss;
+    std::string msg_fname = get_msg_fname(recver, BIGGEST_USED);
+    std::string msg = file_to_string(msg_fname);
 
-    ss << file.rdbuf();
-    std::string s = ss.str();
-
-    if (BIO_write(clnt, s.c_str(), s.length()) <= 0)
+    if (BIO_mywrite(clnt, msg) <= 0)
         throw std::runtime_error("could not send msg to client");
     
-    file.close();
-    std::remove(fname.c_str());
+    std::remove(msg_fname.c_str());
 }
 
 /* handle one connection from sendmsg or recvmsg */
@@ -292,8 +297,8 @@ void handle_one_msg_client(BIO *clnt)
     auto content_length_rgx = std::regex("Content-Length: *", std::regex_constants::icase);
 
     // read first line
-    if (readline(clnt, line) <= 0)
-        throw std::runtime_error("readline failed");
+    if (BIO_mygets(clnt, line) <= 0)
+        throw std::runtime_error("BIO_mygets failed");
 
     int is_sendmsg_1 = (line.find("POST /sendmsg/1 HTTP") != std::string::npos);
     int is_sendmsg_2 = (line.find("POST /sendmsg/2 HTTP") != std::string::npos);
@@ -303,7 +308,7 @@ void handle_one_msg_client(BIO *clnt)
     int content_length = 0;
 
     // read headers
-    while((readline(clnt, line)) > 0) {
+    while((BIO_mygets(clnt, line)) > 0) {
         if (line != "\r\n")
             break;
         int pos = line.find(":") + 2;
@@ -320,7 +325,7 @@ void handle_one_msg_client(BIO *clnt)
     }
 
     if (is_sendmsg_1)
-        handle_sendmsg_1(clnt, sender, recver, content_length);
+        handle_sendmsg_1(clnt, sender, recver);
     else if (is_sendmsg_2)
         handle_sendmsg_2(clnt, sender, recver, content_length);
     else if (is_recvmsg)
