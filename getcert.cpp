@@ -122,7 +122,6 @@ int main(int argc, char **argv)
 	waitpid(pid, NULL, 0);
 
 	/* ===================== Send the Username, Password, and CSR to the server ===================== */ 
-
 	// First, calculate the size of the CSR file
 	FILE* fp = fopen("certs/ca/intermediate/csr/client.csr.pem", "r");
 	if (fp == NULL) {
@@ -133,9 +132,9 @@ int main(int argc, char **argv)
 	int res = ftell(fp);
 	fclose(fp);
 
-	// Send Username and Plain Password to the server as the first 2 lines of the body
+	// Send username, password, new password, and content-length as the 4 headers.
 	char request[4096];
-	sprintf(request, "GET /getcert HTTP/1.0\r\nContent-Length: %d\r\n\r\nUsername: %s\r\nPassword: %s\r\n", res, argv[1], argv[2]);
+	sprintf(request, "GET /getcert HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\nNew Password: %s\r\nContent-Length: %d\r\n\r\n", argv[1], argv[2], "", res);
 	printf(request);
 	BIO_puts(buf_io, request);
 	BIO_flush(buf_io);
@@ -147,7 +146,6 @@ int main(int argc, char **argv)
 	FILE *f = fopen("certs/ca/intermediate/csr/client.csr.pem", "r");
 	while((freadresult = fread(buffer, 1, 1000, f)) > 0)
 	    SSL_write(ssl, buffer, freadresult);
-
 	    //BIO_puts(buf_io, buffer); // TODO: might need to change back to SSL_write
 	fclose(f);
 	printf("Successfully sent CSR to server\n");

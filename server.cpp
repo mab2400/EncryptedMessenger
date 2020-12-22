@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 #include <cstdio>
 
 #include <openssl/ssl.h>
@@ -379,47 +380,57 @@ int main()
 	    if(strcmp(client_name, "changepw")==0)
 		is_changepw = 1;
 
-	    // Read the second line, aka the Content-Length for the CSR.
+	    /* Extracting the username and password from the next two header lines: */
+	    // Read the next header line, aka the New Password for changepw (blank if getcert).
+	    BIO_gets(client_ctx->buf_io, request, 100);
+	    char username[100];
+	    char *user_setup = strtok(request, token_separators);
+	    char *plain_user = strtok(NULL, token_separators);
+	    if(strcmp(user_setup, "Username:")==0)
+	    {
+		strncpy(username, plain_user, strlen(plain_user)-2); // -2 to get rid of \r\n at the end 
+		username[strlen(plain_user)-2] = 0; // null-terminate it
+	    }
+
+	    BIO_gets(client_ctx->buf_io, request, 100);
+	    char password[100];
+	    char *pass_setup = strtok(request, token_separators);
+	    char *plain_pass = strtok(NULL, token_separators);
+	    if(strcmp(pass_setup, "Username:")==0)
+	    {
+		strncpy(password, plain_pass, strlen(plain_pass)-2); // -2 to get rid of \r\n at the end 
+		username[strlen(plain_pass)-2] = 0; // null-terminate it
+	    }
+
+	    // Read the next header line, aka the New Password for changepw (blank if getcert).
+	    char new_pwd[100];
+	    BIO_gets(client_ctx->buf_io, request, 100);
+	    char *new_pass_setup = strtok(request, token_separators);
+	    char *new_password = strtok(NULL, token_separators);
+	    if(strcmp(new_pass_setup, "New Password:")==0)
+	    {
+		if(strlen(new_password) > 0)
+		{
+		    strncpy(new_pwd, new_password, strlen(new_password)-2); // -2 to get rid of \r\n at the end 
+		    password[strlen(new_password)-2] = 0; // null-terminate it
+		}
+	    }
+
+	    // Read the next header line, aka the Content-Length for the CSR.
 	    BIO_gets(client_ctx->buf_io, request, 100);
 	    char *content_length_word = strtok(request, token_separators);
 	    char *c_l = strtok(NULL, token_separators);
 	    int csr_length = atoi(c_l); 
 
-	    // Read the third line, which should be a blank line.
+	    // Read the last line, which should be a blank line.
 	    BIO_gets(client_ctx->buf_io, request, 100);
 	    if(strcmp(request, "\r\n")!=0)
 		exit(1);
 
-	    // Read the request BODY (Username + Password) from the client
-	    char username[100];
-	    char password[100];
-	    int iteration = 1;
-	    while(1)
-	    {
-		if(iteration > 2) // Only want to read the first 2 lines of the body
-		    break;
-
-		BIO_gets(client_ctx->buf_io, request, 100);
-
-		/* Extracting the username and password from the request: */
-		char *user_or_pass = strtok(request, token_separators);
-	        char *plain= strtok(NULL, token_separators);
-		if(strcmp(user_or_pass, "Username:")==0)
-		{
-		    strncpy(username, plain, strlen(plain)-2); // -2 to get rid of \r\n at the end 
-		    username[strlen(plain)-2] = 0; // null-terminate it
-		}
-		if(strcmp(user_or_pass, "Password:")==0)
-		{
-		    strncpy(password, plain, strlen(plain)-2); // -2 to get rid of \r\n at the end 
-		    password[strlen(plain)-2] = 0; // null-terminate it
-		}
-		iteration++;
-	    }
-
 	    printf("Content-Length: %d\n", csr_length);
 	    printf("Username: %s\n", username);
 	    printf("Password: %s\n", password);
+	    printf("New Password: %s\n", new_password);
 
 	    /* TODO: AUTHENTICATION:
 	     * Now that we have the Username and Password, we need to verify that
@@ -485,17 +496,6 @@ int main()
 		/* TODO: Store the certificate somewhere on the server side as well. */
 
 	    } else if(is_changepw) {
-
-		// Read the new password (third line of the request body) from the client
-		char new_pwd[100];
-		BIO_gets(client_ctx->buf_io, request, 100);
-		char *new_pass_setup = strtok(request, token_separators);
-	        char *new_password = strtok(NULL, token_separators);
-		if(strcmp(new_pass_setup, "New Password:")==0)
-		{
-		    strncpy(new_pwd, new_password, strlen(new_password)-2); // -2 to get rid of \r\n at the end 
-		    password[strlen(new_password)-2] = 0; // null-terminate it
-		}
 
 		/* TODO: Save the new password in a file. */
 
