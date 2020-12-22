@@ -25,7 +25,7 @@
 #include <openssl/err.h>
 
 #define  PASS_PORT  25565   // client auth using username/password
-#define  CERT_PORT  10834     // client auth using certificate
+#define  CERT_PORT  10834   // client auth using certificate
 
 #define  BUFSIZE    4096
 
