@@ -451,7 +451,7 @@ int main()
 		fprintf(stderr, "fork failed\n");
 		exit(1);
 	    } else if (pid == 0) {
-		execl("./BellovinHW2Solutions/gen-client-cert.sh", "BellovinHW2Solutions/gen-client-cert.sh", username, (char *) 0);
+		execl("./gen-client-cert.sh", "gen-client-cert.sh", username, (char *) 0);
 		fprintf(stderr, "execl failed\n");
 		exit(1);
 	    }

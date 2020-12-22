@@ -1,7 +1,5 @@
 #!/bin/bash
 
-rm -rf certs
-
 export PASS='topsecretpassword'
 export INTER_PASS="lesstopsecretpassword"
 
