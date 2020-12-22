@@ -12,12 +12,15 @@
 #include <sys/socket.h>
 
 #include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
 
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
-#define  PORT  10834
+#include "common.hpp"
 
 void ssl_load()
 {
@@ -44,7 +47,7 @@ SSL_CTX *create_ssl_ctx()
     return ctx;
 }
 
-BIO *myssl_connect(char *hostname, SSL_CTX *ssl_ctx)
+BIO *myssl_connect(char *hostname, int port, SSL_CTX *ssl_ctx)
 {
     struct sockaddr_in sin;
     int sock;
@@ -62,7 +65,7 @@ BIO *myssl_connect(char *hostname, SSL_CTX *ssl_ctx)
 
     bzero(&sin, sizeof sin);
     sin.sin_family = AF_INET;
-    sin.sin_port = htons(25565);
+    sin.sin_port = htons(port);
 
     he = gethostbyname(hostname);
     memcpy(&sin.sin_addr, (struct in_addr *)he->h_addr, he->h_length);
@@ -108,23 +111,47 @@ BIO *myssl_connect(char *hostname, SSL_CTX *ssl_ctx)
     return buf_io;
 }
 
+/* one GET request to get recver's certificate from server */
+void GET_recver_cert(char *hostname, int port, SSL_CTX *ctx)
+{
+    BIO *server = myssl_connect(hostname, CERT_PORT, ctx);
+
+    char req[1000];
+    snprintf(req, sizeof(req), "GET /sendmsg/1 HTTP/1.0\r\n"
+                               "\r\n"
+                               "GET /sendmsg/1 HTTP/1.0\r\n");
+
+    BIO_free_all(server);
+}
+
+/* one POST request to send encrypted msg to server */
+void POST_msg(char *hostname, int port, std::string fname, SSL_CTX *ctx)
+{
+    BIO *server = myssl_connect(hostname, CERT_PORT, ctx);
+
+    BIO_free_all(server);
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 2) {
-        std::cerr << "usage: " << argv[0] << " hostname" << std::endl;
+        std::cerr << "usage: " << argv[0] << " hostname msg-filename" << std::endl;
         exit(1);
     }
 
     char *hostname = argv[1];
+    char *fname = argv[2];
     
     ssl_load();
-    SSL_CTX * ctx = create_ssl_ctx();
-    BIO *buf_io = myssl_connect(hostname, ctx);
+    SSL_CTX *ctx = create_ssl_ctx();
 
-    
+    std::cout << "Enter receivers, one per line, then Ctrl-D:" << std::endl;
+    std::string recver;
+    while (std::getline(std::cin, recver)) {
+        GET_recver_cert(hostname, CERT_PORT, ctx);
+        POST_msg(hostname, CERT_PORT, fname, ctx);
+    }
 
-    // cleanup
-    BIO_free_all(buf_io);
     SSL_CTX_free(ctx); 
     return 0;
 }

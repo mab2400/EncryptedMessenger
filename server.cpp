@@ -24,8 +24,7 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
-#define  PASS_PORT  25565   // client auth using username/password
-#define  CERT_PORT  10834   // client auth using certificate
+#include "common.hpp"
 
 #define  BUFSIZE    4096
 
@@ -196,36 +195,6 @@ std::string get_msg_fname(std::string recver, int flag)
     return ss.str();
 }
 
-/* reads one line from bio into std::string (removes trailing newline) */
-int BIO_mygets(BIO *bio, std::string& line)
-{
-    char buf[1000];
-    int r;
-    if ((r = BIO_gets(bio, buf, sizeof(buf))) > 0)
-        line = buf;
-    
-    // remove all trailing whitespace
-    // src: techiedelight.com/trim-string-cpp-remove-leading-trailing-spaces/ 
-    line = std::regex_replace(line, std::regex("\\s+$"), std::string(""));
-
-    return r;
-}
-
-/* write data from std::string to bio */
-int BIO_mywrite(BIO *bio, std::string data)
-{
-    return BIO_write(bio, data.data(), data.length());
-}
-
-/* read entire file contents into std::string */
-std::string file_to_string(std::string fname)
-{
-    std::ifstream file(fname);
-    std::stringstream ss;
-    ss << file.rdbuf();
-    return ss.str();
-}
-
 /* does this username exist in USERDIR? */
 bool is_valid_username(const std::string& username) {
     for (const auto& entry : std::filesystem::directory_iterator(USERDIR))
@@ -301,7 +270,7 @@ void handle_one_msg_client(BIO *clnt)
     if (BIO_mygets(clnt, line) <= 0)
         throw std::runtime_error("BIO_mygets failed");
 
-    int is_sendmsg_1 = (line.find("POST /sendmsg/1 HTTP") != std::string::npos);
+    int is_sendmsg_1 = (line.find("GET /sendmsg/1 HTTP") != std::string::npos);
     int is_sendmsg_2 = (line.find("POST /sendmsg/2 HTTP") != std::string::npos);
     int is_recvmsg = (line.find("GET /recvmsg HTTP") != std::string::npos);
 
@@ -512,11 +481,13 @@ int main()
         } 
         
         if (FD_ISSET(servsock_cert, &fds)
-            && ssl_client_accept(client_ctx, ctx, servsock_cert, 1) == 0)
+            && ssl_client_accept(client_ctx, ctx, servsock_cert, 0) == 0)
         {
+            // TODO: change flag from 0 to 1 in ssl_client_accept ^^
+            //       to require certificate or something
+
             // TODO: verify
             // see cms_ver.c for verifying the client certificate
-
             handle_one_msg_client(client_ctx->buf_io);
             ssl_client_cleanup(client_ctx);
         }
