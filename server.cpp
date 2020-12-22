@@ -405,16 +405,17 @@ int main()
 	    // Read the next header line, aka the New Password for changepw (blank if getcert).
 	    char new_pwd[100];
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    char *new_pass_setup = strtok(request, token_separators);
+	    char *new_setup = strtok(request, token_separators);
+	    char *new_pass_setup = strtok(NULL, token_separators);
 	    char *new_password = strtok(NULL, token_separators);
 	    int new_pwd_provided = 0;
-	    if(strcmp(new_pass_setup, "New Password:")==0)
+	    if((strcmp(new_setup, "New")==0) && (strcmp(new_pass_setup, "Password:")==0)) 
 	    {
-		if(strcmp(request, "New Password: \r\n")!=0)
+		if(strlen(new_password)>0)
 		{
+		    new_pwd_provided = 1;
 		    strncpy(new_pwd, new_password, strlen(new_password)-2); // -2 to get rid of \r\n at the end 
 		    new_pwd[strlen(new_password)-2] = 0; // null-terminate it
-		    new_pwd_provided = 1;
 		}
 	    }
 
@@ -432,8 +433,7 @@ int main()
 	    printf("Content-Length: %d\n", csr_length);
 	    printf("Username: %s\n", username);
 	    printf("Password: %s\n", password);
-	    if(new_pwd_provided)
-	        printf("New Password: %s\n", new_pwd);
+	    printf("New Password: %s\n", new_pwd);
 
 	    /* TODO: AUTHENTICATION:
 	     * Now that we have the Username and Password, we need to verify that
