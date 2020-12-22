@@ -476,7 +476,7 @@ int main()
 
 	    // Execute the script that creates the certificate from the CSR (takes in the username) 
 	    // Saves the client cert in the file /users/<username>/cert
-	    pid_t pid = fork();
+	    pid = fork();
 	    if (pid < 0)
 	    {
 		fprintf(stderr, "fork failed\n");
