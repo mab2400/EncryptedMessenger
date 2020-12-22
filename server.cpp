@@ -174,7 +174,7 @@ int readline(BIO *bio, std::string& line)
 {
     char buf[1000];
     int r;
-    if ((r = BIO_gets(bio, buf, sizeof(buf))) > 0);
+    if ((r = BIO_gets(bio, buf, sizeof(buf))) > 0)
         line = buf;
     return r;
 }
@@ -374,7 +374,7 @@ int main()
 		while((freadresult = fread(buffer, 1, 1000, f)) > 0)
 		    SSL_write(client_ctx->ssl, buffer, freadresult);
 		fclose(f);
-		printf("Finished sending the client sert.\n");
+		printf("Finished sending the client cert.\n");
 
 		/* TODO: Store the certificate somewhere on the server side as well. */
 

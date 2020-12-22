@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # generate web client public/private key pair 
+export CLIENT_PASS="topsecretclientpassword"
 
 cd certs/ca
 
@@ -14,3 +15,6 @@ openssl rsa -in client/client-priv.key.pem -pubout -out client/client-pub.key.pe
 openssl req -config intermediate/openssl-inter2.cnf \
             -new -sha256 -out intermediate/csr/client.csr.pem \
             -key client/client-priv.key.pem \
+	    -passout env:CLIENT_PASS \
+	    -subj '/C=US/ST=New York/O=COMS4181 Hw2/CN=ClientCSRName'
+	    
