@@ -112,6 +112,14 @@ BIO *myssl_connect(char *hostname, int port, SSL *ssl)
     return buf_io;
 }
 
+void cleanup(BIO *bio, SSL *ssl)
+{
+    BIO_free_all(bio);
+    SSL_shutdown(ssl);
+    close(SSL_get_fd(ssl));
+    SSL_free(ssl);
+}
+
 /* one GET request to get recver's certificate from server */
 void GET_recver_cert(SSL_CTX *ctx, std::string recver)
 {
@@ -128,9 +136,8 @@ void GET_recver_cert(SSL_CTX *ctx, std::string recver)
                                sender, recver.c_str());
     
     // send request to server
-    std::string sreq(req);
-    BIO_mywrite(server, sreq);
-    std::cerr << "Sent:" << std::endl << sreq;
+    BIO_mywrite(server, req);
+    std::cerr << "Sent:" << std::endl << req;
 
     // read first line
     std::string line;
@@ -149,10 +156,7 @@ void GET_recver_cert(SSL_CTX *ctx, std::string recver)
     BIO_read_to_file_until_close(server, fname);
     std::cerr << "Recved and saved recver cert in " << fname << std::endl;
 
-    BIO_free_all(server);
-    SSL_shutdown(ssl);
-    close(SSL_get_fd(ssl));
-    SSL_free(ssl);
+    cleanup(server, ssl);
 }
 
 /* one POST request to send encrypted msg to server */
@@ -177,18 +181,12 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
                                sender, recver.c_str(), content_length);
 
     // send first line + headers to server
-    std::string sreq(req);
-    BIO_mywrite(server, sreq);
-    std::cerr << "Sent:" << std::endl << sreq;
+    BIO_mywrite(server, req);
 
     // send msg to the server
     BIO_mywrite(server, msg);
-    std::cerr << "Sent msg to server" << std::endl;
 
-    BIO_free_all(server);
-    SSL_shutdown(ssl);
-    close(SSL_get_fd(ssl));
-    SSL_free(ssl);
+    cleanup(server, ssl);
 }
 
 int main(int argc, char **argv)
