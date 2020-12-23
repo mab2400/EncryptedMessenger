@@ -452,7 +452,6 @@ int main()
 	    // Execute the shell script: save-password.sh (which takes in username + password)
 	    if(is_changepw)
 	    {
-		printf("IS CHANGEPW. SAVING NEW PASSWORD INTO FILE....\n");
 		pid_t pid = fork();
 		if (pid < 0)
 		{

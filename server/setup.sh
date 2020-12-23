@@ -3,18 +3,27 @@
 rm -rf certs
 rm -rf users
 
-make clean
-make
+#make clean
+#make
 
 mkdir users
 cd users
 # TODO: make all of the user directories
-mkdir user1 user2
-echo "pass1" > user1/password.txt
-echo "pass2" > user2/password.txt
+
+input="../users.txt"
+while IFS= read -r line
+do 
+    l=($line)
+    user=${l[0]}
+    mkdir $user
+    cd $user
+    password=${l[2]}
+    echo $password > password.txt
+    cd ..
+done < "$input"
 
 cd ..
 
-./gen-ca-certs.sh
-./gen-server-cert.sh
-valgrind ./server
+#./gen-ca-certs.sh
+#./gen-server-cert.sh
+#valgrind ./server
