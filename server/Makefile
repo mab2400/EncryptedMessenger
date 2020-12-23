@@ -8,7 +8,7 @@ ALL_PROGRAMS=server
 .PHONY: default
 default: $(ALL_PROGRAMS)
 
-server:
+server: ../common.hpp
 
 .PHONY: clean
 clean:

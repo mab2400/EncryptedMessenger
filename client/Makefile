@@ -12,7 +12,7 @@ getcert:
 
 changepw:
 
-sendmsg:
+sendmsg: ../common.hpp
 
 recvmsg:
 

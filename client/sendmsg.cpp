@@ -51,15 +51,12 @@ SSL_CTX *create_ssl_ctx()
     return ctx;
 }
 
-BIO *myssl_connect(char *hostname, int port, SSL_CTX *ssl_ctx)
+BIO *myssl_connect(char *hostname, int port, SSL *ssl)
 {
     struct sockaddr_in sin;
     int sock;
     struct hostent *he;
     int err; char *s;
-    SSL *ssl;
-
-    ssl = SSL_new(ssl_ctx);
 
     sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock < 0) {
@@ -89,7 +86,7 @@ BIO *myssl_connect(char *hostname, int port, SSL_CTX *ssl_ctx)
 
     buf_io = BIO_new(BIO_f_buffer()); /* buf_io is type BIO * */
     ssl_bio = BIO_new(BIO_f_ssl());   /* ssl_bio is type BIO * */
-    BIO_set_ssl(ssl_bio, ssl, BIO_CLOSE);
+    BIO_set_ssl(ssl_bio, ssl, BIO_NOCLOSE);
     BIO_push(buf_io, ssl_bio);
 
     err = SSL_connect(ssl); /* ssl is type SSL * */
@@ -118,7 +115,10 @@ BIO *myssl_connect(char *hostname, int port, SSL_CTX *ssl_ctx)
 /* one GET request to get recver's certificate from server */
 void GET_recver_cert(SSL_CTX *ctx, std::string recver)
 {
-    BIO *server = myssl_connect(hostname, CERT_PORT, ctx);
+    SSL *ssl = SSL_new(ctx);
+    BIO *server = myssl_connect(hostname, CERT_PORT, ssl);
+
+    std::cerr << "-----------------------------------" << std::endl;
 
     char req[1000];
     snprintf(req, sizeof(req), "GET /sendmsg/1 HTTP/1.0\r\n"
@@ -130,30 +130,43 @@ void GET_recver_cert(SSL_CTX *ctx, std::string recver)
     // send request to server
     std::string sreq(req);
     BIO_mywrite(server, sreq);
-    
+    std::cerr << "Sent:" << std::endl << sreq;
+
     // read first line
     std::string line;
     if (BIO_mygets(server, line) <= 0)
         throw std::runtime_error("BIO_mygets failed");
+    
+    std::cerr << "Server said:" << std::endl << line << std::endl;
+    
     if (line.find("200 OK") == std::string::npos)
         throw std::runtime_error("Not 200 OK");
 
+    BIO_skip_headers(server);
+
     // get recver cert and save it
     std::string fname = recver + "-cert";
-    BIO_myread_to_file_until_close(server, fname);
+    BIO_read_to_file_until_close(server, fname);
+    std::cerr << "Recved and saved recver cert in " << fname << std::endl;
 
     BIO_free_all(server);
+    SSL_shutdown(ssl);
+    close(SSL_get_fd(ssl));
+    SSL_free(ssl);
 }
 
 /* one POST request to send encrypted msg to server */
 void POST_msg(SSL_CTX *ctx, std::string recver)
 {
-    BIO *server = myssl_connect(hostname, CERT_PORT, ctx);
+    SSL *ssl = SSL_new(ctx);
+    BIO *server = myssl_connect(hostname, CERT_PORT, ssl);
 
-    int content_length = 0;
     std::string msg = read_file_into_string(msg_fname);
+    int content_length = msg.length();
 
     // TODO: encrypt the msg using recver-cert
+
+    std::cerr << "-----------------------------------" << std::endl;
 
     char req[1000];
     snprintf(req, sizeof(req), "POST /sendmsg/2 HTTP/1.0\r\n"
@@ -166,15 +179,21 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
     // send first line + headers to server
     std::string sreq(req);
     BIO_mywrite(server, sreq);
+    std::cerr << "Sent:" << std::endl << sreq;
 
-    // TODO: send encrypted msg
+    // send msg to the server
+    BIO_mywrite(server, msg);
+    std::cerr << "Sent msg to server" << std::endl;
 
     BIO_free_all(server);
+    SSL_shutdown(ssl);
+    close(SSL_get_fd(ssl));
+    SSL_free(ssl);
 }
 
 int main(int argc, char **argv)
 {
-    if (argc != 2) {
+    if (argc != 4) {
         std::cerr << "usage: " << argv[0] << " hostname msg-filename sender-username" << std::endl;
         exit(1);
     }
@@ -188,8 +207,15 @@ int main(int argc, char **argv)
     SSL_CTX *ctx = create_ssl_ctx();
 
     std::cout << "Enter receivers, one per line, then Ctrl-D:" << std::endl;
-    std::string recver;
-    while (std::getline(std::cin, recver)) {
+    std::vector<std::string> recvers;
+    std::string line;
+    while (std::getline(std::cin, line)) {
+        recvers.push_back(line);
+    }
+
+    std::cout << std::endl;
+
+    for (std::string& recver : recvers) {
         GET_recver_cert(ctx, recver);
         POST_msg(ctx, recver);
     }
