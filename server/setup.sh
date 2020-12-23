@@ -3,12 +3,11 @@
 rm -rf certs
 rm -rf users
 
-#make clean
-#make
+make clean
+make
 
 mkdir users
 cd users
-# TODO: make all of the user directories
 
 input="../users.txt"
 while IFS= read -r line
@@ -24,6 +23,6 @@ done < "$input"
 
 cd ..
 
-#./gen-ca-certs.sh
-#./gen-server-cert.sh
-#valgrind ./server
+./gen-ca-certs.sh
+./gen-server-cert.sh
+valgrind ./server
