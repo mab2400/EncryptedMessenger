@@ -6,9 +6,36 @@
 
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
+#include <openssl/err.h>
 
 #define  PASS_PORT  25565   // client auth using username/password
 #define  CERT_PORT  10834   // client auth using certificate
+
+void die(const char *msg)
+{
+    if (errno)
+        perror(msg);
+    else
+        fprintf(stderr, "%s\n", msg);
+    ERR_print_errors_fp(stderr);
+    exit(1);
+}
+
+void ssl_load()
+{
+    // load ssl algos and error strings
+    SSL_library_init();
+    SSL_load_error_strings();
+}
+
+SSL *create_SSL(SSL_CTX *ctx)
+{
+    SSL *ssl = SSL_new(ctx);
+    if (!ssl) {
+        throw std::runtime_error("could not create SSL");
+    }
+    return ssl;
+}
 
 /* read entire file contents into std::string */
 std::string read_file_into_string(std::string fname)
@@ -73,6 +100,16 @@ void BIO_read_to_file_until_close(BIO *bio, std::string fname)
             throw std::runtime_error("fwrite failed");
     }
     fclose(fp);
+}
+
+void BIO_read_to_BIO_until_close(BIO *from, BIO *to)
+{
+    char buf[4096];
+    int r;
+    while ((r = BIO_read(from, buf, sizeof(buf))) > 0) {
+        if (BIO_write(to, buf, r) != r)
+            throw std::runtime_error("BIO_write failed");
+    }
 }
 
 void BIO_skip_headers(BIO *bio)

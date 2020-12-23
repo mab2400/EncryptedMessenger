@@ -43,26 +43,9 @@ struct client_ctx {
     BIO *buf_io;
 };
 
-void die(const char *msg)
-{
-    if (errno)
-        perror(msg);
-    else
-        fprintf(stderr, "%s\n", msg);
-    ERR_print_errors_fp(stderr);
-    exit(1);
-}
-
 void intHandler(int unused) 
 {
     should_exit = 1;
-}
-
-void ssl_load()
-{
-    // load ssl algos and error strings
-    SSL_library_init();
-    SSL_load_error_strings();
 }
 
 int pkey_passwd_cb(char *buf, int size, int rwflag, void *pkey_pass)
@@ -148,7 +131,7 @@ int ssl_client_accept(struct client_ctx *cctx,
 
     fprintf(stderr, "Connection from %s\n", inet_ntoa(clntaddr.sin_addr));
 
-    cctx->ssl = SSL_new(ssl_ctx);
+    cctx->ssl = create_SSL(ssl_ctx);
     SSL_set_fd(cctx->ssl, clntsock);
 
     if (should_verify_client_cert)
@@ -271,7 +254,10 @@ void handle_recvmsg(BIO *clnt, std::string recver)
 
     std::string msg_fname = get_msg_fname(recver, BIGGEST_USED);
     std::string msg = read_file_into_string(msg_fname);
+
+    BIO_mywrite(clnt, "HTTP/1.0 200 OK\r\n\r\n");
     BIO_mywrite(clnt, msg);
+
     std::remove(msg_fname.c_str());
 }
 
@@ -282,6 +268,8 @@ void handle_one_msg_client(BIO *clnt)
     auto sender_rgx = std::regex("Sender: [\\w.+-]+", std::regex_constants::icase);
     auto recver_rgx = std::regex("Recver: [\\w.+-]+", std::regex_constants::icase);
     auto content_length_rgx = std::regex("Content-Length: [0-9]+", std::regex_constants::icase);
+
+    std::cerr << "-----------------------------------" << std::endl;
 
     // read first line
     if (BIO_mygets(clnt, line) <= 0)
@@ -318,7 +306,6 @@ void handle_one_msg_client(BIO *clnt)
             std::cerr << "Content-Length: " << content_length << std::endl;
         }
     }
-    std::cerr << "AFTER HEADERS: " << line << std::endl;
 
     if (is_sendmsg_1)
         handle_sendmsg_1(clnt, sender, recver);

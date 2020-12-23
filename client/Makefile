@@ -12,9 +12,9 @@ getcert:
 
 changepw:
 
-sendmsg: ../common.hpp
+sendmsg: ../common.hpp client-common.hpp
 
-recvmsg:
+recvmsg: ../common.hpp client-common.hpp
 
 .PHONY: clean
 clean:
