@@ -31,6 +31,7 @@
 #define  CA_CERT      "certs/ca/intermediate/certs/ca-chain.cert.pem"
 #define  SERVER_CERT  "certs/ca/server/certs/server.cert.pem"
 #define  SERVER_KEY   "certs/ca/server/private/server.key.pem"
+#define  SERVER_KEY_PASS  "topsecretserverpassword"
 
 #define  USERDIR      "users/"
 
@@ -64,16 +65,28 @@ void ssl_load()
     SSL_load_error_strings();
 }
 
+int pkey_passwd_cb(char *buf, int size, int rwflag, void *pkey_pass)
+{
+    strncpy(buf, SERVER_KEY_PASS, size);
+    buf[size - 1] = '\0';
+    return(strlen(buf));
+}
+
 SSL_CTX *create_ssl_ctx()
 {
     SSL_CTX *ctx;
     const SSL_METHOD *method;
-    
+
     method = TLS_server_method();
     ctx = SSL_CTX_new(method);
 
     if (SSL_CTX_use_certificate_file(ctx, SERVER_CERT, SSL_FILETYPE_PEM) != 1)
         die("SSL_CTX_use_certificate_file() failed");
+
+    SSL_CTX_set_default_passwd_cb(ctx, &pkey_passwd_cb);
+
+    char *passwdbuf = (char *)malloc(256 * sizeof(char));
+    SSL_CTX_set_default_passwd_cb_userdata(ctx, passwdbuf);
 
     if (SSL_CTX_use_PrivateKey_file(ctx, SERVER_KEY, SSL_FILETYPE_PEM) != 1)
         die("SSL_CTX_use_PrivateKey_file() failed");

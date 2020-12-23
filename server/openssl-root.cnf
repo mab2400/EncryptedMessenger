@@ -13,6 +13,7 @@ new_certs_dir     = $dir/newcerts
 database          = $dir/index.txt
 serial            = $dir/serial
 RANDFILE          = $dir/private/.rand
+unique_subject    = no
 
 # The root key and root certificate.
 private_key       = $dir/private/ca.key.pem

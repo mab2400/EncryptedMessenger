@@ -18,6 +18,26 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
+int remove_file(char *filename)
+{
+	printf("removing file .... \n");
+ 	pid_t pid = fork();
+	if (pid < 0) 
+	{
+	    fprintf(stderr, "fork failed\n");
+	    exit(1);
+	} else if (pid == 0) {
+	    // The shell script removes the given file 
+	    execl("./remove-file.sh", "remove-file.sh", filename, (char *) 0);
+	    fprintf(stderr, "execl failed\n");
+	    exit(1);
+	}
+	
+	waitpid(pid, NULL, 0);
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	SSL_CTX *ctx;
@@ -109,11 +129,7 @@ int main(int argc, char **argv)
 	    fprintf(stderr, "fork failed\n");
 	    exit(1);
 	} else if (pid == 0) {
-	    /* The shell script creates the following files:
-	     * 1) certs/ca/client/client-pub.key.pem          --> PUBLIC KEY
-	     * 2) certs/ca/client/private/client-priv.key.pem --> PRIVATE KEY
-	     * 3) certs/ca/intermediate/csr/client.csr.pem    --> CSR 
-	     */
+	    // The shell script creates the CSR file client.csr.pem
 	    execl("./gen-client-keys-and-csr.sh", "gen-client-keys-and-csr.sh", argv[1], argv[2], (char *) 0);
 	    fprintf(stderr, "execl failed\n");
 	    exit(1);
@@ -149,6 +165,7 @@ int main(int argc, char **argv)
 	    //BIO_puts(buf_io, buffer); // TODO: might need to change back to SSL_write
 	fclose(f);
 	printf("Successfully sent CSR to server\n");
+	remove_file("client.csr.pem");
 
 	/* ===================== Receive the signed certificate from the server =============== */
 
@@ -163,7 +180,10 @@ int main(int argc, char **argv)
 	        break;
 	}
 
-	FILE *signed_cert = fopen("client_cert.pem", "w"); // Creating a new file to write into
+	char cert_file[1000];
+	sprintf(cert_file, "%s-cert", argv[1]); 
+	printf("Name of the cert file is: %s\n", cert_file);
+	FILE *signed_cert = fopen(cert_file, "w"); // Creating a new file to write into
 	int ret;
 	char request2[1000];
 	printf("Starting to read in the file\n");
