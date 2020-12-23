@@ -9,4 +9,5 @@ To run the programs:
 Passwords for the server side:
     - Enter pass phrase for ./intermediate/private/intermediate.key.pem: lesstopsecretpassword 
 Passwords for the client side:
-    - Enter pass phrase for client-priv.key.pem: <password> (by default, it is "pass")
+    - Enter pass phrase for client-priv.key.pem: <password> (For getcert, this is the given password. For changepw, 
+      enter the NEW PASSWORD)
