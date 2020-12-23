@@ -367,6 +367,13 @@ int main()
 	    char *token_separators = (char *) " "; 
 	    char *method = strtok(request, token_separators);
 	    char *client_name = strtok(NULL, token_separators);
+
+            if (!method || !client_name) {
+                // TODO 400 Bad Request
+                std::cout << "oof" << std::endl;
+                std::cout << "method or client_name is null" << std::endl;
+            }
+
 	    client_name++; // Move past the "/" 
 	    if(strcmp(client_name, "getcert")==0)
 		is_getcert = 1;
@@ -416,7 +423,14 @@ int main()
 	    BIO_gets(client_ctx->buf_io, request, 100);
 	    char *content_length_word = strtok(request, token_separators);
 	    char *c_l = strtok(NULL, token_separators);
-	    int csr_length = atoi(c_l); 
+
+            if (!content_length_word || !c_l) {
+                // TODO 400 Bad Request
+                std::cout << "oof" << std::endl;
+                std::cout << "content_length_word or c_l is null" << std::endl;
+            }
+
+            int csr_length = atoi(c_l);
 
 	    // Read the last line, which should be a blank line.
 	    BIO_gets(client_ctx->buf_io, request, 100);
