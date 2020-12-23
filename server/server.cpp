@@ -208,6 +208,8 @@ void handle_sendmsg_1(BIO *clnt,
                       std::string sender,
                       std::string recver)
 {
+    std::cerr << "In handle_sendmsg_1" << std::endl;
+
     if (!is_valid_username(sender))
         throw std::runtime_error("bad sender username");
     if (!is_valid_username(recver))

@@ -23,7 +23,7 @@
 #include "../common.hpp"
 
 char *hostname;
-char *fname;
+char *msg_fname;
 char *sender;
 
 void ssl_load()
@@ -146,9 +146,28 @@ void GET_recver_cert(SSL_CTX *ctx, std::string recver)
 }
 
 /* one POST request to send encrypted msg to server */
-void POST_msg(SSL_CTX *ctx)
+void POST_msg(SSL_CTX *ctx, std::string recver)
 {
     BIO *server = myssl_connect(hostname, CERT_PORT, ctx);
+
+    int content_length = 0;
+    std::string msg = read_file_into_string(msg_fname);
+
+    // TODO: encrypt the msg using recver-cert
+
+    char req[1000];
+    snprintf(req, sizeof(req), "POST /sendmsg/2 HTTP/1.0\r\n"
+                               "Sender: %s\r\n"
+                               "Recver: %s\r\n"
+                               "Content-Length: %d\r\n"
+                               "\r\n",
+                               sender, recver.c_str(), content_length);
+
+    // send first line + headers to server
+    std::string sreq(req);
+    BIO_mywrite(server, sreq);
+
+    // TODO: send encrypted msg
 
     BIO_free_all(server);
 }
@@ -162,7 +181,7 @@ int main(int argc, char **argv)
 
     // global vars
     hostname = argv[1];
-    fname = argv[2];
+    msg_fname = argv[2];
     sender = argv[3];
     
     ssl_load();
@@ -172,7 +191,7 @@ int main(int argc, char **argv)
     std::string recver;
     while (std::getline(std::cin, recver)) {
         GET_recver_cert(ctx, recver);
-        POST_msg(ctx);
+        POST_msg(ctx, recver);
     }
 
     SSL_CTX_free(ctx); 
