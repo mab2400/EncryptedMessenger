@@ -221,16 +221,18 @@ void handle_sendmsg_1(BIO *clnt,
                       std::string sender,
                       std::string recver)
 {
+    std::cerr << "handle_sendmsg_1" << std::endl
+              << "Sender=" << sender << ", Recver=" << recver << std::endl;
+
     if (!is_valid_username(sender))
         throw std::runtime_error("bad sender username");
     if (!is_valid_username(recver))
         throw std::runtime_error("bad recver username");
 
-    std::string cert_fname = USERDIR + recver + "/cert.pem";
+    std::string cert_fname = USERDIR + recver + "/cert";
     std::string cert = read_file_into_string(cert_fname);
 
-    std::string ok("HTTP/1.0 200 OK\r\n\r\n");
-    BIO_mywrite(clnt, ok);
+    BIO_mywrite(clnt, "HTTP/1.0 200 OK\r\n\r\n");
     BIO_mywrite(clnt, cert);
 }
 
@@ -240,6 +242,10 @@ void handle_sendmsg_2(BIO *clnt,
                       std::string recver,
                       int content_length)
 {
+    std::cerr << "handle_sendmsg_1" << std::endl
+              << "Sender=" << sender << ", Recver=" << recver
+              << ", Content-Length=" << content_length << std::endl;
+
     if (!is_valid_username(sender))
         throw std::runtime_error("bad sender username");
     if (!is_valid_username(recver))
@@ -253,7 +259,7 @@ void handle_sendmsg_2(BIO *clnt,
         throw std::runtime_error("could not read msg contents from client");
 
     std::string fname = get_msg_fname(recver, SMALLEST_UNUSED);
-    write_string_to_file(fname, std::string(buf.get()));
+    write_string_to_file(fname, std::string(buf.get(), content_length));
     BIO_mywrite(clnt, "HTTP/1.0 200 OK\r\n\r\n");
 }
 
@@ -273,25 +279,33 @@ void handle_recvmsg(BIO *clnt, std::string recver)
 void handle_one_msg_client(BIO *clnt)
 {
     std::string line;
-    auto sender_rgx = std::regex("Sender: *", std::regex_constants::icase);
-    auto recver_rgx = std::regex("Recver: *", std::regex_constants::icase);
-    auto content_length_rgx = std::regex("Content-Length: *", std::regex_constants::icase);
+    auto sender_rgx = std::regex("Sender: [\\w.+-]+", std::regex_constants::icase);
+    auto recver_rgx = std::regex("Recver: [\\w.+-]+", std::regex_constants::icase);
+    auto content_length_rgx = std::regex("Content-Length: [0-9]+", std::regex_constants::icase);
 
     // read first line
     if (BIO_mygets(clnt, line) <= 0)
-        throw std::runtime_error("BIO_mygets failed");
+        throw std::runtime_error("BIO_mygets failed (failed to read first line)");
+    
+    std::cerr << line << std::endl;
 
     int is_sendmsg_1 = (line.find("GET /sendmsg/1 HTTP") != std::string::npos);
     int is_sendmsg_2 = (line.find("POST /sendmsg/2 HTTP") != std::string::npos);
     int is_recvmsg = (line.find("GET /recvmsg HTTP") != std::string::npos);
+
+    if (!(is_sendmsg_1 || is_sendmsg_2 || is_recvmsg)) {
+        throw std::runtime_error("HTTP bad first line");
+    }
 
     std::string sender, recver;
     int content_length = 0;
 
     // read headers
     while((BIO_mygets(clnt, line)) > 0) {
-        if (line != "\r\n")
+        if (line == "\r\n")
             break;
+        line = remove_newline(line);
+
         int pos = line.find(":") + 2;
         if (std::regex_match(line, sender_rgx)) {
             sender = line.substr(pos);
@@ -304,6 +318,7 @@ void handle_one_msg_client(BIO *clnt)
             std::cerr << "Content-Length: " << content_length << std::endl;
         }
     }
+    std::cerr << "AFTER HEADERS: " << line << std::endl;
 
     if (is_sendmsg_1)
         handle_sendmsg_1(clnt, sender, recver);
@@ -311,8 +326,6 @@ void handle_one_msg_client(BIO *clnt)
         handle_sendmsg_2(clnt, sender, recver, content_length);
     else if (is_recvmsg)
         handle_recvmsg(clnt, recver);
-    else
-        throw std::runtime_error("HTTP bad first line");
 }
 
 int main()
@@ -354,6 +367,13 @@ int main()
 	    char *token_separators = (char *) " "; 
 	    char *method = strtok(request, token_separators);
 	    char *client_name = strtok(NULL, token_separators);
+
+            if (!method || !client_name) {
+                // TODO 400 Bad Request
+                std::cout << "oof" << std::endl;
+                std::cout << "method or client_name is null" << std::endl;
+            }
+
 	    client_name++; // Move past the "/" 
 	    if(strcmp(client_name, "getcert")==0)
 		is_getcert = 1;
@@ -403,7 +423,14 @@ int main()
 	    BIO_gets(client_ctx->buf_io, request, 100);
 	    char *content_length_word = strtok(request, token_separators);
 	    char *c_l = strtok(NULL, token_separators);
-	    int csr_length = atoi(c_l); 
+
+            if (!content_length_word || !c_l) {
+                // TODO 400 Bad Request
+                std::cout << "oof" << std::endl;
+                std::cout << "content_length_word or c_l is null" << std::endl;
+            }
+
+            int csr_length = atoi(c_l);
 
 	    // Read the last line, which should be a blank line.
 	    BIO_gets(client_ctx->buf_io, request, 100);
@@ -504,7 +531,13 @@ int main()
 
             // TODO: verify
             // see cms_ver.c for verifying the client certificate
-            handle_one_msg_client(client_ctx->buf_io);
+            try {
+                handle_one_msg_client(client_ctx->buf_io);
+            } catch (std::exception& e) {
+                std::cout << e.what() << ": going back to accept()" << std::endl;
+                std::string teapot("HTTP/1.0 418 IM A FUCKING TEAPOT\r\n\r\n");  
+                BIO_mywrite(client_ctx->buf_io, teapot);
+            }
             ssl_client_cleanup(client_ctx);
         }
     }
