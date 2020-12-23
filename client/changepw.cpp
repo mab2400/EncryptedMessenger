@@ -18,6 +18,27 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
+int remove_file(char *filename)
+{
+	printf("removing file .... \n");
+ 	pid_t pid = fork();
+	if (pid < 0) 
+	{
+	    fprintf(stderr, "fork failed\n");
+	    exit(1);
+	} else if (pid == 0) {
+	    // The shell script removes the given file 
+	    execl("./remove-file.sh", "remove-file.sh", filename, (char *) 0);
+	    fprintf(stderr, "execl failed\n");
+	    exit(1);
+	}
+	
+	waitpid(pid, NULL, 0);
+
+	return 0;
+}
+
+
 int main(int argc, char **argv)
 {
 	SSL_CTX *ctx;
@@ -102,6 +123,10 @@ int main(int argc, char **argv)
 	}
 
 	/* ===================== Generate the PUBLIC/PRIVATE keys and CSR ===================== */ 
+	// Now that we know this is CHANGEPW, delete the old cert.
+	char cert_file[1000];
+	sprintf(cert_file, "%s-cert", argv[1]);
+	remove_file(cert_file);
 
  	pid_t pid = fork();
 	if (pid < 0) 
@@ -144,6 +169,7 @@ int main(int argc, char **argv)
 	    SSL_write(ssl, buffer, freadresult);
 	    //BIO_puts(buf_io, buffer); // TODO: might need to change back to SSL_write
 	fclose(f);
+	remove_file("client.csr.pem"); // No need for it anymore
 
 	/* ===================== Receive the signed certificate from the server =============== */
 
@@ -158,7 +184,7 @@ int main(int argc, char **argv)
 	        break;
 	}
 
-	FILE *signed_cert = fopen("client_cert.pem", "w"); // Creating a new file to write into
+	FILE *signed_cert = fopen(cert_file, "w"); // Creating a new file to write into
 	int ret;
 	char request2[1000];
 	while((ret = BIO_gets(buf_io, request2, 100)) > 0)
