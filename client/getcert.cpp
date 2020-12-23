@@ -20,7 +20,6 @@
 
 int remove_file(char *filename)
 {
-	printf("removing file .... \n");
  	pid_t pid = fork();
 	if (pid < 0) 
 	{
@@ -186,13 +185,11 @@ int main(int argc, char **argv)
 	FILE *signed_cert = fopen(cert_file, "w"); // Creating a new file to write into
 	int ret;
 	char request2[1000];
-	printf("Starting to read in the file\n");
 	while((ret = BIO_gets(buf_io, request2, 100)) > 0)
 	{
 	    printf("%s", request2);
 	    fwrite(request2, 1, ret, signed_cert);
 	}
-	printf("Finished reading in the file\n");
 	fclose(signed_cert);
 
 	/* ================================== Free memory structures =============================== */ 

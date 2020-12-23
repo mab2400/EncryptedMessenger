@@ -9,9 +9,6 @@ cd certs/ca
 # generate web server certificate
 mkdir server client server/private client/private server/certs client/certs server/csr client/csr other other/private other/csr other/certs
 
-echo "===== INSIDE SERVER GEN ======"
-pwd
-
 openssl genpkey -out server/private/server.key.pem -outform PEM -pass env:SERVER_PASS -aes256 -algorithm RSA -pkeyopt rsa_keygen_bits:2048
 
 chmod 400 server/private/server.key.pem

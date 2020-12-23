@@ -418,25 +418,26 @@ int main()
 	    /* TODO: AUTHENTICATION:
 	     * Now that we have the Username and Password, we need to verify that
 	     * the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
+	     * - Probably will involve checking the password against the one in users/<username>/password.txt.
 	     */
 
-	    // SAVE THE PASSWORD
-	    // Execute the shell script: save-password.sh (which takes in username, password, is_getcert)
-	    // 1) If getcert (not changepw), then creates the username directory inside of users/. 
-	    // 2) Writes the password into a textfile within the username directory
-	    pid_t pid = fork();
-	    if (pid < 0)
+	    // If CHANGEPW, then save the new password into users/<username>/password.txt 
+	    // Execute the shell script: save-password.sh (which takes in username + password)
+	    if(is_changepw)
 	    {
-		fprintf(stderr, "fork failed\n");
-		exit(1);
-	    } else if (pid == 0) {
-		char is_getcert_print[100];
-		sprintf(is_getcert_print, "%d", is_getcert);
-		execl("./save-password.sh", "save-password.sh", username, password, is_getcert_print, (char *) 0);
-		fprintf(stderr, "execl failed\n");
-		exit(1);
+		printf("IS CHANGEPW. SAVING NEW PASSWORD INTO FILE....\n");
+		pid_t pid = fork();
+		if (pid < 0)
+		{
+		    fprintf(stderr, "fork failed\n");
+		    exit(1);
+		} else if (pid == 0) {
+		    execl("./save-password.sh", "save-password.sh", username, new_pwd, (char *) 0);
+		    fprintf(stderr, "execl failed\n");
+		    exit(1);
+		}
+		waitpid(pid, NULL, 0);
 	    }
-	    waitpid(pid, NULL, 0);
 
 	    /* Read the CSR from the rest of the request body.
 	     * Write it into a file. */ 
@@ -460,7 +461,7 @@ int main()
 
 	    // Execute the script that creates the certificate from the CSR (takes in the username) 
 	    // Saves the client cert in the file /users/<username>/cert
-	    pid = fork();
+	    pid_t pid = fork();
 	    if (pid < 0)
 	    {
 		fprintf(stderr, "fork failed\n");
@@ -470,17 +471,17 @@ int main()
 		fprintf(stderr, "execl failed\n");
 		exit(1);
 	    }
-
 	    waitpid(pid, NULL, 0);
 	    remove(csr_filename); // Deleting the temporary CSR file.
 
 	    // Send the client certificate to the client
-	    // First, send the 200 OK line
+	    // 1) First, send the 200 OK line
 	    char line[1000];
 	    sprintf(line, "HTTP/1.1 200 OK\r\n\r\n");
 	    BIO_puts(client_ctx->buf_io, line);
 	    BIO_flush(client_ctx->buf_io);
 
+	    // 2) Then send the certificate 
 	    size_t freadresult;
 	    char buffer[1000];
 	    char cert_filename[1000];
