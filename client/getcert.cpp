@@ -77,7 +77,7 @@ int main(int argc, char **argv)
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(25565);
 
-	he = gethostbyname("localhost");
+	he = gethostbyname(argv[1]);
 	memcpy(&sin.sin_addr, (struct in_addr *)he->h_addr, he->h_length);
 	if (connect(sock, (struct sockaddr *)&sin, sizeof sin) < 0) {
 		perror("connect");
@@ -129,7 +129,7 @@ int main(int argc, char **argv)
 	    exit(1);
 	} else if (pid == 0) {
 	    // The shell script creates the CSR file client.csr.pem
-	    execl("./gen-client-keys-and-csr.sh", "gen-client-keys-and-csr.sh", argv[1], argv[2], (char *) 0);
+	    execl("./gen-client-keys-and-csr.sh", "gen-client-keys-and-csr.sh", argv[2], argv[3], (char *) 0);
 	    fprintf(stderr, "execl failed\n");
 	    exit(1);
 	}
@@ -149,7 +149,7 @@ int main(int argc, char **argv)
 
 	// Send username, password, new password, and content-length as the 4 headers.
 	char request[4096];
-	sprintf(request, "GET /getcert HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\nNew Password: %s\r\nContent-Length: %d\r\n\r\n", argv[1], argv[2], "", res);
+	sprintf(request, "GET /getcert HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\nNew Password: %s\r\nContent-Length: %d\r\n\r\n", argv[2], argv[3], "", res);
 	printf(request);
 	BIO_puts(buf_io, request);
 	BIO_flush(buf_io);
@@ -180,7 +180,7 @@ int main(int argc, char **argv)
 	}
 
 	char cert_file[1000];
-	sprintf(cert_file, "%s-cert.pem", argv[1]); 
+	sprintf(cert_file, "%s-cert.pem", argv[2]); 
 	printf("Name of the cert file is: %s\n", cert_file);
 	FILE *signed_cert = fopen(cert_file, "w"); // Creating a new file to write into
 	int ret;

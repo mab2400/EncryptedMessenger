@@ -1,10 +1,9 @@
-To run GETCERT:
+To run the programs:
 
 - In one window, cd server
     - ./setup.sh
-	    - Enter PEM pass phrase: topsecretserverpassword
 - In another window, cd client
-    - ./setup.sh
+    - ./setup.sh (runs getcert)
 
 ============
 Passwords for the server side:

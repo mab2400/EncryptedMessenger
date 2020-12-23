@@ -68,7 +68,7 @@ SSL_CTX *create_ssl_ctx()
 
     SSL_CTX_set_default_passwd_cb(ctx, &pkey_passwd_cb);
 
-    char *passwdbuf = (char *)malloc(256 * sizeof(char));
+    char passwdbuf[256];
     SSL_CTX_set_default_passwd_cb_userdata(ctx, passwdbuf);
 
     if (SSL_CTX_use_PrivateKey_file(ctx, SERVER_KEY, SSL_FILETYPE_PEM) != 1)

@@ -3,4 +3,4 @@
 make clean
 make
 
-valgrind ./getcert user pass
+valgrind ./getcert localhost addleness Cardin_pwns

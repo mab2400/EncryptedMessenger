@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 	/* ===================== Generate the PUBLIC/PRIVATE keys and CSR ===================== */ 
 	// Now that we know this is CHANGEPW, delete the old cert.
 	char cert_file[1000];
-	sprintf(cert_file, "%s-cert.pem", argv[1]);
+	sprintf(cert_file, "%s-cert.pem", argv[2]);
 	remove_file(cert_file);
 
  	pid_t pid = fork();
@@ -135,8 +135,8 @@ int main(int argc, char **argv)
 	    exit(1);
 	} else if (pid == 0) {
 	    // The shell script creates the CSR file, called client.csr.pem
-	    // NOTE: Pass in argv[3], the new password.
-	    execl("./gen-client-keys-and-csr.sh", "gen-client-keys-and-csr.sh", argv[1], argv[3], (char *) 0);
+	    // NOTE: Pass in argv[4], the new password.
+	    execl("./gen-client-keys-and-csr.sh", "gen-client-keys-and-csr.sh", argv[2], argv[4], (char *) 0);
 	    fprintf(stderr, "execl failed\n");
 	    exit(1);
 	}
@@ -154,9 +154,9 @@ int main(int argc, char **argv)
 	int res = ftell(fp);
 	fclose(fp);
 
-	// Send username, password, new password, and content-length as the 4 headers (NOTICE: argv[3] is the new password).
+	// Send username, password, new password, and content-length as the 4 headers (NOTICE: argv[4] is the new password).
 	char request[4096];
-	sprintf(request, "POST /changepw HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\nNew Password: %s\r\nContent-Length: %d\r\n\r\n", argv[1], argv[2], argv[3], res);
+	sprintf(request, "POST /changepw HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\nNew Password: %s\r\nContent-Length: %d\r\n\r\n", argv[2], argv[3], argv[4], res);
 	printf(request);
 	BIO_puts(buf_io, request);
 	BIO_flush(buf_io);
