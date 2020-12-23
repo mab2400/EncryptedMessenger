@@ -59,8 +59,8 @@ void GET_recver_cert(SSL_CTX *ctx, std::string recver)
     BIO_skip_headers(server);
 
     // get recver cert and save it
-    std::string fname = recver + "-cert";
-    BIO_read_to_file_until_close(server, fname);
+    std::string fname = recver + "-cert.pem";
+    BIO_to_file_until_close(server, fname);
     std::cerr << "Recved and saved recver cert in " << fname << std::endl;
 
     cleanup(server, ssl);
@@ -89,9 +89,22 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
 
     // send first line + headers to server
     BIO_mywrite(server, req);
+    std::cerr << "Sent:" << std::endl << req;
 
     // send msg to the server
     BIO_mywrite(server, msg);
+    
+    // read first line
+    std::string line;
+    if (BIO_mygets(server, line) <= 0)
+        throw std::runtime_error("BIO_mygets failed");
+    
+    std::cerr << "Server said:" << std::endl << line << std::endl;
+    
+    if (line.find("200 OK") == std::string::npos)
+        throw std::runtime_error("Not 200 OK");
+
+    BIO_skip_headers(server);
 
     cleanup(server, ssl);
 }

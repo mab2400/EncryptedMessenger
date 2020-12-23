@@ -180,7 +180,7 @@ int main(int argc, char **argv)
 	}
 
 	char cert_file[1000];
-	sprintf(cert_file, "%s-cert", argv[1]); 
+	sprintf(cert_file, "%s-cert.pem", argv[1]); 
 	printf("Name of the cert file is: %s\n", cert_file);
 	FILE *signed_cert = fopen(cert_file, "w"); // Creating a new file to write into
 	int ret;

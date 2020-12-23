@@ -56,12 +56,9 @@ void GET_msg(SSL_CTX *ctx)
 
     BIO_skip_headers(server);
 
-    BIO *mem;
     char *buf;
-    mem = BIO_new(BIO_s_mem());
-    if (!mem)
-        die("could not create mem bio");
-    BIO_read_to_BIO_until_close(server, mem);
+    BIO *mem = create_mem_bio();
+    BIO_to_BIO_until_close(server, mem);
     BIO_get_mem_data(mem, &buf);
 
     // TODO: decrypt message

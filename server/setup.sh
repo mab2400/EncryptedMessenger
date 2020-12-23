@@ -18,6 +18,7 @@ do
     cd $user
     password=${l[2]}
     echo $password > password.txt
+    mkdir pending
     cd ..
 done < "$input"
 

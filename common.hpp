@@ -7,6 +7,7 @@
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
+#include <openssl/cms.h>
 
 #define  PASS_PORT  25565   // client auth using username/password
 #define  CERT_PORT  10834   // client auth using certificate
@@ -23,9 +24,10 @@ void die(const char *msg)
 
 void ssl_load()
 {
-    // load ssl algos and error strings
     SSL_library_init();
     SSL_load_error_strings();
+    OpenSSL_add_all_algorithms();
+    ERR_load_crypto_strings();
 }
 
 SSL *create_SSL(SSL_CTX *ctx)
@@ -89,8 +91,8 @@ std::string BIO_myread(BIO *bio, int amount)
     return std::string(buf.get());
 }
 
-/* duh */
-void BIO_read_to_file_until_close(BIO *bio, std::string fname)
+/* read from bio, write to file, until close */
+void BIO_to_file_until_close(BIO *bio, std::string fname)
 {
     char buf[4096];
     unsigned int r;
@@ -102,7 +104,8 @@ void BIO_read_to_file_until_close(BIO *bio, std::string fname)
     fclose(fp);
 }
 
-void BIO_read_to_BIO_until_close(BIO *from, BIO *to)
+/* read from one bio, write to another another, until close */
+void BIO_to_BIO_until_close(BIO *from, BIO *to)
 {
     char buf[4096];
     int r;
@@ -112,10 +115,33 @@ void BIO_read_to_BIO_until_close(BIO *from, BIO *to)
     }
 }
 
+/* read file contents into a bio */
+unsigned int BIO_read_from_file(BIO *bio, std::string fname)
+{
+    char buf[4096];
+    int r, total = 0;
+    FILE *fp = fopen(fname.c_str(), "wb");
+    while ((r = fread(buf, 1, sizeof(buf), fp)) > 0) {
+        if (BIO_write(bio, buf, r) != r)
+            throw std::runtime_error("fwrite failed");
+        total += r;
+    }
+    fclose(fp);
+    return total;
+}
+
 void BIO_skip_headers(BIO *bio)
 {
     std::string line;
     while (BIO_mygets(bio, line))
         if (line == "\r\n")
             break;
+}
+
+BIO *create_mem_bio()
+{
+    BIO *mem = BIO_new(BIO_s_mem());
+    if (!mem)
+        throw std::runtime_error("could not create mem bio");
+    return mem;
 }

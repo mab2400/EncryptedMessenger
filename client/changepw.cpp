@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 	/* ===================== Generate the PUBLIC/PRIVATE keys and CSR ===================== */ 
 	// Now that we know this is CHANGEPW, delete the old cert.
 	char cert_file[1000];
-	sprintf(cert_file, "%s-cert", argv[1]);
+	sprintf(cert_file, "%s-cert.pem", argv[1]);
 	remove_file(cert_file);
 
  	pid_t pid = fork();
