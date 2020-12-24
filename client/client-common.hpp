@@ -16,6 +16,10 @@
 
 #define  PKEY_PATH  "client-priv.key.pem"
 
+// we shouldn't have put this file in the ../server directory but
+// it's too late to change that now
+#define  CA_FILE    "../server/certs/ca/intermediate/certs/ca-chain.cert.pem"
+
 std::string get_user_cert_fname(std::string username)
 {
     return username + "-cert.pem";
@@ -38,21 +42,11 @@ SSL_CTX *create_ssl_ctx(const char *cert_path)
     if (SSL_CTX_check_private_key(ctx) != 1)
         throw std::runtime_error("SSL_check_private_key() failed");
 
+    SSL_CTX_set_default_verify_dir(ctx);
+    SSL_CTX_load_verify_locations(ctx, CA_FILE, NULL);
     SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
 
     return ctx;
-}
-
-void set_cert_paths(SSL *ssl, const char *cert_path)
-{
-    if (SSL_use_certificate_file(ssl, cert_path, SSL_FILETYPE_PEM) != 1)
-        throw std::runtime_error("SSL_use_certificate_file() failed");
-
-    if (SSL_use_PrivateKey_file(ssl, PKEY_PATH, SSL_FILETYPE_PEM) != 1)
-        throw std::runtime_error("SSL_use_PrivateKey_file() failed");
-
-    if (SSL_check_private_key(ssl) != 1)
-        throw std::runtime_error("SSL_check_private_key() failed");
 }
 
 BIO *myssl_connect(const char *hostname, int port, SSL *ssl)

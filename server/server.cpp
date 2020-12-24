@@ -28,7 +28,7 @@
 
 #define  BUFSIZE    4096
 
-#define  CA_CERT      "certs/ca/intermediate/certs/ca-chain.cert.pem"
+#define  CA_FILE      "certs/ca/certs/ca.cert.pem"
 #define  SERVER_CERT  "certs/ca/server/certs/server.cert.pem"
 #define  SERVER_KEY   "certs/ca/server/private/server.key.pem"
 #define  SERVER_KEY_PASS  "topsecretserverpassword"
@@ -77,10 +77,8 @@ SSL_CTX *create_ssl_ctx()
     if (SSL_CTX_check_private_key(ctx) != 1)
         die("SSL_CTX_check_private_key() failed");
 
-    if (SSL_CTX_load_verify_locations(ctx, CA_CERT, NULL) != 1)
+    if (SSL_CTX_load_verify_locations(ctx, CA_FILE, NULL) != 1)
         die("SSL_CTX_load_verify_locations() failed");
-
-    SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(CA_CERT));
 
     return ctx;
 }
