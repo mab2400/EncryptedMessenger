@@ -362,9 +362,9 @@ int main()
             }
 
 	    client_name++; // Move past the "/" 
-	    if(strcmp(client_name, "getcert")==0)
+	    if(strncmp(client_name, "getcert", strlen("getcert") + 1)==0)
 		is_getcert = 1;
-	    if(strcmp(client_name, "changepw")==0)
+	    if(strncmp(client_name, "changepw", strlen("changepw") + 1)==0)
 		is_changepw = 1;
 
 	    /* Extracting the username and password from the next two header lines: */
@@ -373,7 +373,7 @@ int main()
 	    char username[100];
 	    char *user_setup = strtok(request, token_separators);
 	    char *plain_user = strtok(NULL, token_separators);
-	    if(strcmp(user_setup, "Username:")==0)
+	    if(strncmp(user_setup, "Username:", strlen("Username:") + 1)==0)
 	    {
 		strncpy(username, plain_user, strlen(plain_user)-2); // -2 to get rid of \r\n at the end 
 		username[strlen(plain_user)-2] = 0; // null-terminate it
@@ -383,7 +383,7 @@ int main()
 	    char password[100];
 	    char *pass_setup = strtok(request, token_separators);
 	    char *plain_pass = strtok(NULL, token_separators);
-	    if(strcmp(pass_setup, "Password:")==0)
+	    if(strncmp(pass_setup, "Password:", strlen("Password:") + 1)==0)
 	    {
 		strncpy(password, plain_pass, strlen(plain_pass)-2); // -2 to get rid of \r\n at the end 
 		password[strlen(plain_pass)-2] = 0; // null-terminate it
@@ -396,7 +396,7 @@ int main()
 	    char *new_pass_setup = strtok(NULL, token_separators);
 	    char *new_password = strtok(NULL, token_separators);
 	    int new_pwd_provided = 0;
-	    if((strcmp(new_setup, "New")==0) && (strcmp(new_pass_setup, "Password:")==0)) 
+	    if((strncmp(new_setup, "New", strlen("New") + 1)==0) && (strncmp(new_pass_setup, "Password:", strlen("Password:") + 1)==0)) 
 	    {
 		if(strlen(new_password)>0)
 		{
@@ -421,7 +421,7 @@ int main()
 
 	    // Read the last line, which should be a blank line.
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    if(strcmp(request, "\r\n")!=0)
+	    if(strncmp(request, "\r\n", strlen("\r\n") + 1)!=0)
 		exit(1);
 
 	    printf("Content-Length: %d\n", csr_length);
@@ -455,7 +455,7 @@ int main()
 	    /* Read the CSR from the rest of the request body.
 	     * Write it into a file. */ 
 	    char csr_filename[1000];
-	    sprintf(csr_filename, "users/%s/csr_temp.pem", username);
+	    snprintf(csr_filename, strlen("users//csr_temp.pem") + strlen(username) + 1, "users/%s/csr_temp.pem", username);
 	    FILE *csr_file = fopen(csr_filename, "w");
 	    if(csr_file == NULL)
 		printf("CSR FILE NOT FOUND\n");
@@ -498,7 +498,8 @@ int main()
 	    size_t freadresult;
 	    char buffer[1000];
 	    char cert_filename[1000];
-	    sprintf(cert_filename, "users/%s/cert", username);
+	    // TODO: Should I be renaming the cert something else?
+	    snprintf(cert_filename, strlen("users//cert") + strlen(username) + 1, "users/%s/cert", username);
 	    FILE *f = fopen(cert_filename, "r"); // Server-side copy of the client certificate.
 	    if(f == NULL)
 		printf("FILE NOT FOUND\n");

@@ -161,7 +161,6 @@ int main(int argc, char **argv)
 	FILE *f = fopen("client.csr.pem", "r");
 	while((freadresult = fread(buffer, 1, 1000, f)) > 0)
 	    SSL_write(ssl, buffer, freadresult);
-	    //BIO_puts(buf_io, buffer); // TODO: might need to change back to SSL_write
 	fclose(f);
 	printf("Successfully sent CSR to server\n");
 	remove_file("client.csr.pem");
@@ -175,12 +174,12 @@ int main(int argc, char **argv)
 	{
 	    BIO_gets(buf_io, line2, 1000); 
 	    printf(line2);
-	    if(strcmp(line2, "\r\n")==0)
+	    if(strncmp(line2, "\r\n", strlen("\r\n") + 1)==0)
 	        break;
 	}
 
 	char cert_file[1000];
-	sprintf(cert_file, "%s-cert.pem", argv[2]); 
+	snprintf(cert_file, strlen("-cert.pem") + strlen(argv[2]) + 1, "%s-cert.pem", argv[2]); 
 	printf("Name of the cert file is: %s\n", cert_file);
 	FILE *signed_cert = fopen(cert_file, "w"); // Creating a new file to write into
 	int ret;

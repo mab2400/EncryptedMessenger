@@ -20,7 +20,6 @@
 
 int remove_file(char *filename)
 {
-	printf("removing file .... \n");
  	pid_t pid = fork();
 	if (pid < 0) 
 	{
@@ -32,7 +31,6 @@ int remove_file(char *filename)
 	    fprintf(stderr, "execl failed\n");
 	    exit(1);
 	}
-	
 	waitpid(pid, NULL, 0);
 
 	return 0;
@@ -125,7 +123,7 @@ int main(int argc, char **argv)
 	/* ===================== Generate the PUBLIC/PRIVATE keys and CSR ===================== */ 
 	// Now that we know this is CHANGEPW, delete the old cert.
 	char cert_file[1000];
-	sprintf(cert_file, "%s-cert.pem", argv[2]);
+	snprintf(cert_file, strlen("-cert.pem") + strlen(argv[2]) + 1, "%s-cert.pem", argv[2]);
 	remove_file(cert_file);
 
  	pid_t pid = fork();
@@ -167,7 +165,6 @@ int main(int argc, char **argv)
 	FILE *f = fopen("client.csr.pem", "r");
 	while((freadresult = fread(buffer, 1, 1000, f)) > 0)
 	    SSL_write(ssl, buffer, freadresult);
-	    //BIO_puts(buf_io, buffer); // TODO: might need to change back to SSL_write
 	fclose(f);
 	remove_file("client.csr.pem"); // No need for it anymore
 
@@ -180,7 +177,7 @@ int main(int argc, char **argv)
 	{
 	    BIO_gets(buf_io, line2, 1000); 
 	    printf(line2);
-	    if(strcmp(line2, "\r\n")==0)
+	    if(strncmp(line2, "\r\n", strlen("\r\n") + 1)==0)
 	        break;
 	}
 
