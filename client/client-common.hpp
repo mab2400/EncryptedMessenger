@@ -14,7 +14,7 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
-#define  PKEY_PATH  "client-priv.key.pem"
+//#define  PKEY_PATH  "client-priv.key.pem"
 
 // we shouldn't have put this file in the ../server directory but
 // it's too late to change that now
@@ -36,7 +36,15 @@ SSL_CTX *create_ssl_ctx(const char *cert_path)
     if (SSL_CTX_use_certificate_file(ctx, cert_path, SSL_FILETYPE_PEM) != 1)
         throw std::runtime_error("SSL_use_certificate_file() failed");
 
-    if (SSL_CTX_use_PrivateKey_file(ctx, PKEY_PATH, SSL_FILETYPE_PEM) != 1)
+    char cert_path_copy[1000];
+    strncpy(cert_path_copy, cert_path, strlen(cert_path));
+    char *token_separators = (char *) "-"; 
+    char *username = strtok(cert_path_copy, token_separators);
+    char pkey_path[1000];
+    int len_pkey_path = strlen(username) + strlen("-priv.key.pem") + 1;
+    snprintf(pkey_path, len_pkey_path, "%s-priv.key.pem", username); 
+
+    if (SSL_CTX_use_PrivateKey_file(ctx, pkey_path, SSL_FILETYPE_PEM) != 1)
         throw std::runtime_error("SSL_use_PrivateKey_file() failed");
 
     if (SSL_CTX_check_private_key(ctx) != 1)

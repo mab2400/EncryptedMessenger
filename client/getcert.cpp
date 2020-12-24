@@ -136,7 +136,7 @@ int main(int argc, char **argv)
 	    fprintf(stderr, "fork failed\n");
 	    exit(1);
 	} else if (pid == 0) {
-	    // The shell script creates the CSR file client.csr.pem
+	    // The shell script creates the CSR file <username>.csr.pem
 	    execl("./gen-client-keys-and-csr.sh", "gen-client-keys-and-csr.sh", argv[2], argv[3], (char *) 0);
 	    fprintf(stderr, "execl failed\n");
 	    exit(1);
@@ -146,7 +146,9 @@ int main(int argc, char **argv)
 
 	/* ===================== Send the Username, Password, and CSR to the server ===================== */ 
 	// First, calculate the size of the CSR file
-	FILE* fp = fopen("client.csr.pem", "r");
+	char csr_name[1000];
+	snprintf(csr_name, strlen(".csr.pem") + strlen(argv[2]) + 1, "%s.csr.pem", argv[2]); 
+	FILE* fp = fopen(csr_name, "r");
 	if (fp == NULL) {
 	    printf("File Not Found!\n");
 	    return -1;
@@ -167,11 +169,11 @@ int main(int argc, char **argv)
 	// Send the content of the CSR in the rest of the body 
 	size_t freadresult;
 	char buffer[1000];
-	FILE *f = fopen("client.csr.pem", "r");
+	FILE *f = fopen(csr_name, "r");
 	while((freadresult = fread(buffer, 1, 1000, f)) > 0)
 	    SSL_write(ssl, buffer, freadresult);
 	fclose(f);
-	remove_file("client.csr.pem");
+	remove_file(csr_name);
 
 	/* ===================== Receive the signed certificate from the server =============== */
 
