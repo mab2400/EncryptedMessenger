@@ -50,8 +50,10 @@ SSL_CTX *create_ssl_ctx(const char *cert_path)
     if (SSL_CTX_check_private_key(ctx) != 1)
         throw std::runtime_error("SSL_check_private_key() failed");
 
+    if (SSL_CTX_load_verify_locations(ctx, CA_FILE, NULL) != 1)
+        throw std::runtime_error("SSL_CTX_load_verify_locations() failed");
+
     SSL_CTX_set_default_verify_dir(ctx);
-    SSL_CTX_load_verify_locations(ctx, CA_FILE, NULL);
     SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
 
     return ctx;
