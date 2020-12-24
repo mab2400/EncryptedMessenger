@@ -94,7 +94,7 @@ int main(int argc, char **argv)
     recver = argv[2];
     
     ssl_load();
-    SSL_CTX *ctx = create_ssl_ctx();
+    SSL_CTX *ctx = create_ssl_ctx(get_user_cert_fname(recver).c_str());
     
     GET_msg(ctx);
 

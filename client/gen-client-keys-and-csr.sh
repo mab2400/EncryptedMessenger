@@ -18,6 +18,3 @@ openssl req -new -sha256 -out client.csr.pem \
             -key client-priv.key.pem \
 	    -passout env:CLIENT_PASS \
 	    -subj "/C=US/ST=New York/O=COMS4181 Hw2/CN={$1}"
-
-rm client-pub.key.pem
-rm client-priv.key.pem

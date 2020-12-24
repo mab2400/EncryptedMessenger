@@ -59,7 +59,7 @@ void GET_recver_cert(SSL_CTX *ctx, std::string recver)
     BIO_skip_headers(server);
 
     // get recver cert and save it
-    std::string fname = recver + "-cert.pem";
+    std::string fname = get_user_cert_fname(recver);
     BIO_to_file_until_close(server, fname);
     std::cerr << "Recved and saved recver cert in " << fname << std::endl;
 
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
     sender = argv[3];
     
     ssl_load();
-    SSL_CTX *ctx = create_ssl_ctx();
+    SSL_CTX *ctx = create_ssl_ctx(get_user_cert_fname(sender).c_str());
 
     std::cout << "Enter receivers, one per line, then Ctrl-D:" << std::endl;
     std::vector<std::string> recvers;

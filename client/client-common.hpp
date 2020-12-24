@@ -14,7 +14,14 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
-SSL_CTX *create_ssl_ctx()
+#define  PKEY_PATH  "client-priv.key.pem"
+
+std::string get_user_cert_fname(std::string username)
+{
+    return username + "-cert.pem";
+}
+
+SSL_CTX *create_ssl_ctx(const char *cert_path)
 {
     SSL_CTX *ctx;
     const SSL_METHOD *method;
@@ -22,13 +29,33 @@ SSL_CTX *create_ssl_ctx()
     method = TLS_client_method();
     ctx = SSL_CTX_new(method);
 
-    SSL_CTX_set_default_verify_dir(ctx);
+    if (SSL_CTX_use_certificate_file(ctx, cert_path, SSL_FILETYPE_PEM) != 1)
+        throw std::runtime_error("SSL_use_certificate_file() failed");
+
+    if (SSL_CTX_use_PrivateKey_file(ctx, PKEY_PATH, SSL_FILETYPE_PEM) != 1)
+        throw std::runtime_error("SSL_use_PrivateKey_file() failed");
+
+    if (SSL_CTX_check_private_key(ctx) != 1)
+        throw std::runtime_error("SSL_check_private_key() failed");
+
     SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
 
     return ctx;
 }
 
-BIO *myssl_connect(char *hostname, int port, SSL *ssl)
+void set_cert_paths(SSL *ssl, const char *cert_path)
+{
+    if (SSL_use_certificate_file(ssl, cert_path, SSL_FILETYPE_PEM) != 1)
+        throw std::runtime_error("SSL_use_certificate_file() failed");
+
+    if (SSL_use_PrivateKey_file(ssl, PKEY_PATH, SSL_FILETYPE_PEM) != 1)
+        throw std::runtime_error("SSL_use_PrivateKey_file() failed");
+
+    if (SSL_check_private_key(ssl) != 1)
+        throw std::runtime_error("SSL_check_private_key() failed");
+}
+
+BIO *myssl_connect(const char *hostname, int port, SSL *ssl)
 {
     struct sockaddr_in sin;
     int sock;

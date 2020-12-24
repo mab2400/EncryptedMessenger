@@ -80,6 +80,8 @@ SSL_CTX *create_ssl_ctx()
     if (SSL_CTX_load_verify_locations(ctx, CA_CERT, NULL) != 1)
         die("SSL_CTX_load_verify_locations() failed");
 
+    SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(CA_CERT));
+
     return ctx;
 }
 
@@ -137,8 +139,9 @@ int ssl_client_accept(struct client_ctx *cctx,
     else
         SSL_set_verify(cctx->ssl, SSL_VERIFY_NONE, NULL);
 
-    if (SSL_accept(cctx->ssl) <= 0) {
-        fprintf(stderr, "SSL_accept() failed\n");
+    int r;
+    if ((r = SSL_accept(cctx->ssl)) <= 0) {
+        fprintf(stderr, "SSL_accept() failed: error code %d\n", SSL_get_error(cctx->ssl, r));
         ERR_print_errors_fp(stderr);
         SSL_free(cctx->ssl);
         close(clntsock);
@@ -521,8 +524,6 @@ int main()
             // TODO: change flag from 0 to 1 in ssl_client_accept ^^
             //       to require certificate or something
 
-            // TODO: verify
-            // see cms_ver.c for verifying the client certificate
             try {
                 handle_one_msg_client(client_ctx->buf_io);
             } catch (std::exception& e) {
