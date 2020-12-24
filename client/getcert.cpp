@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
+#include <iostream>
 
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
@@ -39,6 +40,13 @@ int remove_file(char *filename)
 
 int main(int argc, char **argv)
 {
+
+	if (argc != 4)
+	{
+	    std::cerr << "usage: " << argv[0] << " <hostname> <username> <password>" << std::endl;
+	    exit(1);
+	}
+
 	SSL_CTX *ctx;
 	SSL *ssl;
 	const SSL_METHOD *meth;
