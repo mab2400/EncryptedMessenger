@@ -129,8 +129,6 @@ int ssl_client_accept(struct client_ctx *cctx,
         return -1;
     }
 
-    fprintf(stderr, "Connection from %s\n", inet_ntoa(clntaddr.sin_addr));
-
     cctx->ssl = create_SSL(ssl_ctx);
     SSL_set_fd(cctx->ssl, clntsock);
 
@@ -138,7 +136,6 @@ int ssl_client_accept(struct client_ctx *cctx,
         SSL_set_verify(cctx->ssl, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
     else
         SSL_set_verify(cctx->ssl, SSL_VERIFY_NONE, NULL);
-    //printf("should_verify_client_cert succeeded\n");
 
     if (SSL_accept(cctx->ssl) <= 0) {
         fprintf(stderr, "SSL_accept() failed\n");
@@ -351,6 +348,8 @@ int main()
 
 	    // Read the first line of the request to determine which client is connecting
             BIO_gets(client_ctx->buf_io, request, 100);
+	    printf("-----------------------------------\n");
+	    printf(request);
 	    char *token_separators = (char *) " "; 
 	    char *method = strtok(request, token_separators);
 	    char *client_name = strtok(NULL, token_separators);
@@ -370,6 +369,7 @@ int main()
 	    /* Extracting the username and password from the next two header lines: */
 	    // Read the next header line, aka the New Password for changepw (blank if getcert).
 	    BIO_gets(client_ctx->buf_io, request, 100);
+	    printf(request);
 	    char username[100];
 	    char *user_setup = strtok(request, token_separators);
 	    char *plain_user = strtok(NULL, token_separators);
@@ -380,6 +380,7 @@ int main()
 	    }
 
 	    BIO_gets(client_ctx->buf_io, request, 100);
+	    printf(request);
 	    char password[100];
 	    char *pass_setup = strtok(request, token_separators);
 	    char *plain_pass = strtok(NULL, token_separators);
@@ -392,6 +393,7 @@ int main()
 	    // Read the next header line, aka the New Password for changepw (blank if getcert).
 	    char new_pwd[100];
 	    BIO_gets(client_ctx->buf_io, request, 100);
+	    printf(request);
 	    char *new_setup = strtok(request, token_separators);
 	    char *new_pass_setup = strtok(NULL, token_separators);
 	    char *new_password = strtok(NULL, token_separators);
@@ -408,6 +410,7 @@ int main()
 
 	    // Read the next header line, aka the Content-Length for the CSR.
 	    BIO_gets(client_ctx->buf_io, request, 100);
+	    printf(request);
 	    char *content_length_word = strtok(request, token_separators);
 	    char *c_l = strtok(NULL, token_separators);
 
@@ -421,13 +424,9 @@ int main()
 
 	    // Read the last line, which should be a blank line.
 	    BIO_gets(client_ctx->buf_io, request, 100);
+	    printf(request);
 	    if(strncmp(request, "\r\n", strlen("\r\n") + 1)!=0)
 		exit(1);
-
-	    printf("Content-Length: %d\n", csr_length);
-	    printf("Username: %s\n", username);
-	    printf("Password: %s\n", password);
-	    printf("New Password: %s\n", new_pwd);
 
 	    /* TODO: AUTHENTICATION:
 	     * Now that we have the Username and Password, we need to verify that
@@ -465,7 +464,6 @@ int main()
 	    while((ret = BIO_gets(client_ctx->buf_io, request2, 100)) > 0)
 	    {
 		sum += ret;
-		printf("%s", request2);
 		fwrite(request2, 1, ret, csr_file);
 		if(sum == csr_length)
 		    break;
@@ -490,7 +488,7 @@ int main()
 	    // Send the client certificate to the client
 	    // 1) First, send the 200 OK line
 	    char line[1000];
-	    sprintf(line, "HTTP/1.1 200 OK\r\n\r\n");
+	    sprintf(line, "HTTP/1.0 200 OK\r\n\r\n");
 	    BIO_puts(client_ctx->buf_io, line);
 	    BIO_flush(client_ctx->buf_io);
 

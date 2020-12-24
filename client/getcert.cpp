@@ -150,19 +150,19 @@ int main(int argc, char **argv)
 	// Send username, password, new password, and content-length as the 4 headers.
 	char request[4096];
 	sprintf(request, "GET /getcert HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\nNew Password: %s\r\nContent-Length: %d\r\n\r\n", argv[2], argv[3], "", res);
+	printf("-----------------------------------\n");
+	printf("Sent:\n");
 	printf(request);
 	BIO_puts(buf_io, request);
 	BIO_flush(buf_io);
 
 	// Send the content of the CSR in the rest of the body 
-	printf("Sending CSR to server\n");
 	size_t freadresult;
 	char buffer[1000];
 	FILE *f = fopen("client.csr.pem", "r");
 	while((freadresult = fread(buffer, 1, 1000, f)) > 0)
 	    SSL_write(ssl, buffer, freadresult);
 	fclose(f);
-	printf("Successfully sent CSR to server\n");
 	remove_file("client.csr.pem");
 
 	/* ===================== Receive the signed certificate from the server =============== */
@@ -170,25 +170,22 @@ int main(int argc, char **argv)
 	// Get the 200 OK line and blank line
 	char line2[1000];
 	int ret1;
+	printf("Server said:\n");
 	while((ret1 = BIO_gets(buf_io, line2, 1000)) > 0)
 	{
-	    BIO_gets(buf_io, line2, 1000); 
 	    printf(line2);
+	    BIO_gets(buf_io, line2, 1000); 
 	    if(strncmp(line2, "\r\n", strlen("\r\n") + 1)==0)
 	        break;
 	}
 
 	char cert_file[1000];
 	snprintf(cert_file, strlen("-cert.pem") + strlen(argv[2]) + 1, "%s-cert.pem", argv[2]); 
-	printf("Name of the cert file is: %s\n", cert_file);
 	FILE *signed_cert = fopen(cert_file, "w"); // Creating a new file to write into
 	int ret;
 	char request2[1000];
 	while((ret = BIO_gets(buf_io, request2, 100)) > 0)
-	{
-	    printf("%s", request2);
 	    fwrite(request2, 1, ret, signed_cert);
-	}
 	fclose(signed_cert);
 
 	/* ================================== Free memory structures =============================== */ 

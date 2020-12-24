@@ -154,6 +154,8 @@ int main(int argc, char **argv)
 
 	// Send username, password, new password, and content-length as the 4 headers (NOTICE: argv[4] is the new password).
 	char request[4096];
+	printf("-----------------------------------\n");
+	printf("Sent:\n");
 	sprintf(request, "POST /changepw HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\nNew Password: %s\r\nContent-Length: %d\r\n\r\n", argv[2], argv[3], argv[4], res);
 	printf(request);
 	BIO_puts(buf_io, request);
@@ -173,10 +175,11 @@ int main(int argc, char **argv)
 	// Get the 200 OK line and blank line
 	char line2[1000];
 	int ret1;
+	printf("Server said:\n");
 	while((ret1 = BIO_gets(buf_io, line2, 1000)) > 0)
 	{
-	    BIO_gets(buf_io, line2, 1000); 
 	    printf(line2);
+	    BIO_gets(buf_io, line2, 1000); 
 	    if(strncmp(line2, "\r\n", strlen("\r\n") + 1)==0)
 	        break;
 	}
@@ -185,10 +188,7 @@ int main(int argc, char **argv)
 	int ret;
 	char request2[1000];
 	while((ret = BIO_gets(buf_io, request2, 100)) > 0)
-	{
-	    printf("%s", request2);
 	    fwrite(request2, 1, ret, signed_cert);
-	}
 	fclose(signed_cert);
 
 	/* ================================== Free memory structures =============================== */ 
