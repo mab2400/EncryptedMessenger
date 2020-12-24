@@ -31,6 +31,7 @@ void GET_msg(SSL_CTX *ctx)
 {
     SSL *ssl = create_SSL(ctx);
     BIO *server = myssl_connect(hostname, CERT_PORT, ssl);
+    auto recver_rgx = std::regex("Recver: [\\w.+-]+", std::regex_constants::icase);
 
     std::cerr << "-----------------------------------" << std::endl;
 
@@ -53,6 +54,18 @@ void GET_msg(SSL_CTX *ctx)
     
     if (line.find("200 OK") == std::string::npos)
         throw std::runtime_error("Not 200 OK");
+
+    // read recver header
+    if (BIO_mygets(server, line) <= 0)
+        throw std::runtime_error("BIO_mygets failed");
+
+    std::cerr << line << std::endl;
+
+    if (!std::regex_match(line, recver_rgx))
+        throw std::runtime_error("did not receive recver header");
+
+    std::string recver = remove_newline(line.substr(line.find(":") + 2));
+    std::cerr << "Recver: " << recver << std::endl;
 
     BIO_skip_headers(server);
 

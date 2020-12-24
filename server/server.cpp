@@ -242,6 +242,7 @@ void handle_sendmsg_2(BIO *clnt,
         throw std::runtime_error("could not read msg contents from client");
 
     std::string fname = get_msg_fname(recver, SMALLEST_UNUSED);
+    write_string_to_file(fname, recver + "\n");
     write_string_to_file(fname, std::string(buf.get(), content_length));
     BIO_mywrite(clnt, "HTTP/1.0 200 OK\r\n\r\n");
 }
@@ -253,9 +254,15 @@ void handle_recvmsg(BIO *clnt, std::string recver)
         throw std::runtime_error("bad recver username");
 
     std::string msg_fname = get_msg_fname(recver, BIGGEST_USED);
-    std::string msg = read_file_into_string(msg_fname);
+    std::string data = read_file_into_string(msg_fname);
 
-    BIO_mywrite(clnt, "HTTP/1.0 200 OK\r\n\r\n");
+    int sender_pos_end = data.find("\n");
+    std::string sender = data.substr(0, sender_pos_end - 1);
+    std::string msg = data.substr(sender_pos_end + 1);
+
+    BIO_mywrite(clnt, "HTTP/1.0 200 OK\r\n"
+                      "Recver: " + sender + "\r\n"
+                      "\r\n");
     BIO_mywrite(clnt, msg);
 
     std::remove(msg_fname.c_str());
@@ -511,7 +518,7 @@ int main()
         } 
         
         if (FD_ISSET(servsock_cert, &fds)
-            && ssl_client_accept(client_ctx, ctx, servsock_cert, 0) == 0)
+            && ssl_client_accept(client_ctx, ctx, servsock_cert, 1) == 0)
         {
             // TODO: change flag from 0 to 1 in ssl_client_accept ^^
             //       to require certificate or something

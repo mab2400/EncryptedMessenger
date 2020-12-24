@@ -23,10 +23,6 @@ SSL_CTX *create_ssl_ctx()
     ctx = SSL_CTX_new(method);
 
     SSL_CTX_set_default_verify_dir(ctx);
-    /* SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL); */
-    // Do we have to write this ourselves?
-    // int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *CAfile, const char *CApath);
-
     SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
 
     return ctx;
