@@ -59,7 +59,7 @@ Error message:
 TODO: UPDATE THIS !!!!!! 
 
 =====================================================================
-TEST 5: User has a username that is not one of the given usernames ==
+TEST 5: User enters a username that is not one of the given usernames
 =====================================================================
 
 Server side: ./test.sh
