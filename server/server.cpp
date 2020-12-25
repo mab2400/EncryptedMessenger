@@ -160,6 +160,25 @@ int ssl_client_accept(struct client_ctx *cctx,
     return 0;
 }
 
+int remove_file(char *filename)
+{
+ 	pid_t pid = fork();
+	if (pid < 0) 
+	{
+	    fprintf(stderr, "fork failed\n");
+	    exit(1);
+	} else if (pid == 0) {
+	    // The shell script removes the given file 
+	    execl("./remove-file.sh", "remove-file.sh", filename, (char *) 0);
+	    fprintf(stderr, "execl failed\n");
+	    exit(1);
+	}
+	
+	waitpid(pid, NULL, 0);
+
+	return 0;
+}
+
 void my_select(int servsock_pass, int servsock_cert, fd_set *read_fds) {
     FD_ZERO(read_fds);
     FD_SET(servsock_pass, read_fds);
@@ -341,20 +360,28 @@ void handle_one_msg_client(BIO *clnt)
 }
 
 /* returns a boolean -- true if matches, false otherwise */ 
-/*
-int pass_valid(char *username, char *try_cstr) {
-  
-   std::string try_pass(try_cstr);
-   // TODO: retrieve old password hash from password file
-   std::string old_hash("$6$/gDoqCFIni4hdevD$TdD35OXYWJtGzmdwWyC0fuWFTTgzA7kGWyIL8J8B3r2/bk91p1zNSiD9cIuBPhN8lofDxNHPFHurXuZoziViQ.");
+int check_pass_valid(char *username, char *try_cstr) {
+    
+    // retrieve password entry
+    char passfilename[256];
+    snprintf(passfilename, sizeof(passfilename), "users/%s/password.txt", username);
+
+    FILE *passfile = fopen(passfilename, "r");
+    char entry[4096];
+    fgets(entry, sizeof(entry), passfile);
+    fclose(passfile);
+    std::cout << "entry: " << entry << std::endl;
+    
+    std::string old_hash(entry);
 
     // check hash
     size_t old_salt_len = old_hash.find_last_of('$');
     std::cout << "salt len: " <<  old_salt_len << std::endl;
-    
+
     std::string old_salt = old_hash.substr(0, old_salt_len);
     std::cout << "old salt: " << old_salt << std::endl;
 
+    std::string try_pass(try_cstr);
     std::string try_hash(crypt(try_pass.c_str(), old_salt.c_str()));
     std::cout << "encrypted: " << try_hash << std::endl;
 
@@ -363,10 +390,8 @@ int pass_valid(char *username, char *try_cstr) {
 
     return match == 0;
 }
-*/
 
-/* changes the user's password by generating a new hash */
-/*
+/* changes the user's password by putting a new hash in their file */
 int replace_pass(char *username, char *new_pass) {
     std::cout << "string to encrypt: " << new_pass << std::endl;
 
@@ -376,10 +401,17 @@ int replace_pass(char *username, char *new_pass) {
     
     char *new_hash = crypt(new_pass, new_salt);
     std::cout << "encrypted: " << new_hash << std::endl;
-    
+   
+    char passfilename[256];
+    snprintf(passfilename, sizeof(passfilename), "users/%s/password.txt", username);
+
+    FILE *passfile = fopen(passfilename, "w");
+    fputs(new_hash, passfile);
+    fclose(passfile);
+
     return 0;
+
 }
-*/
 
 
 int main()
@@ -418,7 +450,7 @@ int main()
 	    // Read the first line of the request to determine which client is connecting
             BIO_gets(client_ctx->buf_io, request, 100);
 	    printf("-----------------------------------\n");
-	    printf("%s\n", request);
+	    printf("%s", request);
 	    char *token_separators = (char *) " "; 
 	    char *method = strtok(request, token_separators);
 	    char *client_name = strtok(NULL, token_separators);
@@ -436,7 +468,7 @@ int main()
 	    /* Extracting the username and password from the next two header lines: */
 	    // Read the next header line, aka the New Password for changepw (blank if getcert).
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    printf("%s\n", request);
+	    printf("%s", request);
 	    char username[100];
 	    char *user_setup = strtok(request, token_separators);
 	    char *plain_user = strtok(NULL, token_separators);
@@ -444,10 +476,13 @@ int main()
 	    {
 		strncpy(username, plain_user, strlen(plain_user)-2); // -2 to get rid of \r\n at the end 
 		username[strlen(plain_user)-2] = 0; // null-terminate it
+	    } else {
+		fprintf(stderr, "Ill-formatted header\n");
+		return -1;
 	    }
 
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    printf("%s\n", request);
+	    printf("%s", request);
 	    char password[100];
 	    char *pass_setup = strtok(request, token_separators);
 	    char *plain_pass = strtok(NULL, token_separators);
@@ -455,12 +490,15 @@ int main()
 	    {
 		strncpy(password, plain_pass, strlen(plain_pass)-2); // -2 to get rid of \r\n at the end 
 		password[strlen(plain_pass)-2] = 0; // null-terminate it
+	    } else {
+		fprintf(stderr, "Ill-formatted header\n");
+		return -1;
 	    }
 
 	    // Read the next header line, aka the New Password for changepw (blank if getcert).
 	    char new_pwd[100];
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    printf("%s\n", request);
+	    printf("%s", request);
 	    char *new_setup = strtok(request, token_separators);
 	    char *new_pass_setup = strtok(NULL, token_separators);
 	    char *new_password = strtok(NULL, token_separators);
@@ -471,11 +509,14 @@ int main()
 		    strncpy(new_pwd, new_password, strlen(new_password)-2); // -2 to get rid of \r\n at the end 
 		    new_pwd[strlen(new_password)-2] = 0; // null-terminate it
 		}
+	    } else {
+		fprintf(stderr, "Ill-formatted header\n");
+		return -1;
 	    }
 
 	    // Read the next header line, aka the Content-Length for the CSR.
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    printf("%s\n", request);
+	    printf("%s", request);
 	    char *content_length_word = strtok(request, token_separators);
 	    char *c_l = strtok(NULL, token_separators);
 
@@ -489,21 +530,28 @@ int main()
 
 	    // Read the last line, which should be a blank line.
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    printf("%s\n", request);
+	    printf("%s", request);
 	    if(strncmp(request, "\r\n", strlen("\r\n") + 1)!=0)
-		exit(1);
+	    {
+		fprintf(stderr, "Ill-formatted header\n");
+		return -1;
+	    }
 
-	    /* TODO: AUTHENTICATION:
-	     * Now that we have the Username and Password, we need to verify that
-	     * the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
-	     * - Probably will involve checking the password against the one in users/<username>/password.txt.
-	     */
+	    // Now that we have the Username and Password, we need to verify that
+	    // the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
+  
+            int passwordOk = check_pass_valid(username, plain_pass);
+            
 
 	    // If CHANGEPW, then save the new password into users/<username>/password.txt 
 	    // Execute the shell script: save-password.sh (which takes in username + password)
+
+
 	    if(is_changepw)
 	    {
-		pid_t pid = fork();
+                replace_pass(username, new_pwd);
+		
+                /* pid_t pid = fork();
 		if (pid < 0)
 		{
 		    fprintf(stderr, "fork failed\n");
@@ -514,6 +562,7 @@ int main()
 		    exit(1);
 		}
 		waitpid(pid, NULL, 0);
+                */
 	    }
 
 	    /* Read the CSR from the rest of the request body.
@@ -548,7 +597,7 @@ int main()
 		exit(1);
 	    }
 	    waitpid(pid, NULL, 0);
-	    remove(csr_filename); // Deleting the temporary CSR file.
+	    remove_file(csr_filename); // Deleting the temporary CSR file.
 
 	    // Send the client certificate to the client
 	    // 1) First, send the 200 OK line
@@ -561,7 +610,6 @@ int main()
 	    size_t freadresult;
 	    char buffer[1000];
 	    char cert_filename[1000];
-	    // TODO: Should I be renaming the cert something else?
 	    snprintf(cert_filename, strlen("users//cert") + strlen(username) + 1, "users/%s/cert", username);
 	    FILE *f = fopen(cert_filename, "r"); // Server-side copy of the client certificate.
 	    if(f == NULL)

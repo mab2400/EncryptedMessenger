@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 	sprintf(request, "GET /getcert HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\nNew Password: %s\r\nContent-Length: %d\r\n\r\n", argv[2], argv[3], "", res);
 	printf("-----------------------------------\n");
 	printf("Sent:\n");
-	printf("%s\n", request);
+	printf("%s", request);
 	BIO_puts(buf_io, request);
 	BIO_flush(buf_io);
 
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
 	printf("Server said:\n");
 	while((ret1 = BIO_gets(buf_io, line2, 1000)) > 0)
 	{
-	    printf("%s\n", line2);
+	    printf("%s", line2);
 	    BIO_gets(buf_io, line2, 1000); 
 	    if(strncmp(line2, "\r\n", strlen("\r\n") + 1)==0)
 	        break;
