@@ -160,6 +160,25 @@ int ssl_client_accept(struct client_ctx *cctx,
     return 0;
 }
 
+int remove_file(char *filename)
+{
+ 	pid_t pid = fork();
+	if (pid < 0) 
+	{
+	    fprintf(stderr, "fork failed\n");
+	    exit(1);
+	} else if (pid == 0) {
+	    // The shell script removes the given file 
+	    execl("./remove-file.sh", "remove-file.sh", filename, (char *) 0);
+	    fprintf(stderr, "execl failed\n");
+	    exit(1);
+	}
+	
+	waitpid(pid, NULL, 0);
+
+	return 0;
+}
+
 void my_select(int servsock_pass, int servsock_cert, fd_set *read_fds) {
     FD_ZERO(read_fds);
     FD_SET(servsock_pass, read_fds);
@@ -457,6 +476,9 @@ int main()
 	    {
 		strncpy(username, plain_user, strlen(plain_user)-2); // -2 to get rid of \r\n at the end 
 		username[strlen(plain_user)-2] = 0; // null-terminate it
+	    } else {
+		fprintf(stderr, "Ill-formatted header\n");
+		return -1;
 	    }
 
 	    BIO_gets(client_ctx->buf_io, request, 100);
@@ -468,6 +490,9 @@ int main()
 	    {
 		strncpy(password, plain_pass, strlen(plain_pass)-2); // -2 to get rid of \r\n at the end 
 		password[strlen(plain_pass)-2] = 0; // null-terminate it
+	    } else {
+		fprintf(stderr, "Ill-formatted header\n");
+		return -1;
 	    }
 
 	    // Read the next header line, aka the New Password for changepw (blank if getcert).
@@ -484,6 +509,9 @@ int main()
 		    strncpy(new_pwd, new_password, strlen(new_password)-2); // -2 to get rid of \r\n at the end 
 		    new_pwd[strlen(new_password)-2] = 0; // null-terminate it
 		}
+	    } else {
+		fprintf(stderr, "Ill-formatted header\n");
+		return -1;
 	    }
 
 	    // Read the next header line, aka the Content-Length for the CSR.
@@ -504,7 +532,10 @@ int main()
 	    BIO_gets(client_ctx->buf_io, request, 100);
 	    printf("%s", request);
 	    if(strncmp(request, "\r\n", strlen("\r\n") + 1)!=0)
-		exit(1);
+	    {
+		fprintf(stderr, "Ill-formatted header\n");
+		return -1;
+	    }
 
 	    // Now that we have the Username and Password, we need to verify that
 	    // the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
@@ -566,7 +597,7 @@ int main()
 		exit(1);
 	    }
 	    waitpid(pid, NULL, 0);
-	    remove(csr_filename); // Deleting the temporary CSR file.
+	    remove_file(csr_filename); // Deleting the temporary CSR file.
 
 	    // Send the client certificate to the client
 	    // 1) First, send the 200 OK line
@@ -579,7 +610,6 @@ int main()
 	    size_t freadresult;
 	    char buffer[1000];
 	    char cert_filename[1000];
-	    // TODO: Should I be renaming the cert something else?
 	    snprintf(cert_filename, strlen("users//cert") + strlen(username) + 1, "users/%s/cert", username);
 	    FILE *f = fopen(cert_filename, "r"); // Server-side copy of the client certificate.
 	    if(f == NULL)
