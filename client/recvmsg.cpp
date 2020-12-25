@@ -19,6 +19,9 @@
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
+#include <openssl/cms.h>
+#include <openssl/pem.h>
+#include <openssl/x509_vfy.h>
 
 #include "../common.hpp"
 #include "client-common.hpp"
@@ -119,6 +122,53 @@ void GET_sender_cert(SSL_CTX *ctx, std::string sender)
 void process_msg(std::string sender, BIO *msgmem)
 {
     std::string cert_fname = get_user_cert_fname(sender);
+
+    /* VERIFY using sender cert */
+    
+    X509_STORE *st = X509_STORE_new();
+    BIO *tbio = BIO_new_file(cert_fname.c_str(), "r"); // CA cert
+    if (!tbio)
+        throw std::runtime_error("BIO_new_file() failed");
+
+    X509 *sender_cert = PEM_read_bio_X509(tbio, NULL, 0, NULL);
+    if (!sender_cert)
+        throw std::runtime_error("PEM_read_bio_X509() failed");
+
+    BIO *cont;
+    CMS_ContentInfo *cms = SMIME_read_CMS(msgmem, &cont);
+    if (!cms)
+        throw std::runtime_error("SMIME_read_CMS() failed");
+
+    STACK_OF(X509) *certs = sk_X509_new_null();
+    if (!certs)
+        throw std::runtime_error("sk_X509_new_null() failed");
+
+    if (!sk_X509_push(certs, sender_cert))
+        throw std::runtime_error("sk_X509_push() failed");
+
+    if (!(X509_STORE_load_locations(st, cert_fname.c_str(), NULL)))
+        throw std::runtime_error("X509_STORE_load_locations() on cert_fname failed");
+
+    if (!(X509_STORE_load_locations(st, INTER_CERT, NULL)))
+        throw std::runtime_error("X509_STORE_load_locations() on INTER_CERT failed");
+
+    if (!(X509_STORE_load_locations(st, ROOT_CERT, NULL)))
+        throw std::runtime_error("X509_STORE_load_locations() on ROOT_CERT failed");
+
+    BIO *verified_msg = create_mem_bio();
+    if (!CMS_verify(cms, certs, st, cont, verified_msg, CMS_NOINTERN)) {
+        ERR_print_errors_fp(stderr);
+        throw std::runtime_error("CMS_verify() failed");
+    }
+
+    std::cerr << "Verification Successful" << std::endl;
+
+    char *data;
+    int content_length = BIO_get_mem_data(verified_msg, &data);
+    fwrite(data, 1, content_length, stdout);
+
+    /* DECRYPT using recver cert and pkey */
+
 }
 
 int main(int argc, char **argv)

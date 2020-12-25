@@ -5,11 +5,10 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#include <stdio.h>
-#include <strings.h>
-#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <iostream>
 #include <fstream>
@@ -86,6 +85,8 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
               get_user_cert_fname(sender).c_str(),
               get_user_pkey_fname(sender).c_str(),
               both_fname.c_str(), (char *)0);
+    } else {
+        waitpid(pid, NULL, 0);
     }
 
     BIO *tbio = BIO_new_file(both_fname.c_str(), "r");
@@ -99,8 +100,10 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
         throw std::runtime_error("PEM_read_bio_X509() or PEM_read_bio_PrivateKey() failed");
 
     // open content being signed
-    BIO *original_msg = create_mem_bio();
-    BIO_read_from_file(original_msg, msg_fname);
+    BIO *original_msg = BIO_new_file(msg_fname, "r");
+    if (!original_msg)
+        throw std::runtime_error("BIO_new_file() failed");
+
 
     // sign content
     CMS_ContentInfo *cms = CMS_sign(scert, skey, NULL, original_msg, flags);
@@ -128,8 +131,8 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
 
     // hack to get length
     // TODO: change this from signed_msg to encrypted_msg
-    char **unused;
-    int content_length = BIO_get_mem_data(signed_msg, unused);
+    char *data;
+    int content_length = BIO_get_mem_data(signed_msg, &data);
 
     char req[1000];
     snprintf(req, sizeof(req), "POST /sendmsg/2 HTTP/1.0\r\n"
@@ -144,7 +147,7 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
     std::cerr << "Sent:" << std::endl << req;
 
     // send msg to the server
-    BIO_to_BIO_until_close(signed_msg, server);
+    BIO_mywrite(server, std::string(data, content_length));
     
     // read first line
     std::string line;

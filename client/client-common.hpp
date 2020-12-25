@@ -16,9 +16,8 @@
 
 //#define  PKEY_PATH  "client-priv.key.pem"
 
-// we shouldn't have put this file in the ../server directory but
-// it's too late to change that now
-#define  CA_FILE    "../server/certs/ca/intermediate/certs/ca-chain.cert.pem"
+#define  ROOT_CERT   "../server/certs/ca/certs/ca.cert.pem"
+#define  INTER_CERT  "../server/certs/ca/intermediate/certs/ca-chain.cert.pem"
 
 std::string get_user_cert_fname(std::string username)
 {
@@ -60,7 +59,7 @@ SSL_CTX *create_ssl_ctx(const char *cert_path)
     if (SSL_CTX_check_private_key(ctx) != 1)
         throw std::runtime_error("SSL_check_private_key() failed");
 
-    if (SSL_CTX_load_verify_locations(ctx, CA_FILE, NULL) != 1)
+    if (SSL_CTX_load_verify_locations(ctx, INTER_CERT, NULL) != 1)
         throw std::runtime_error("SSL_CTX_load_verify_locations() failed");
 
     SSL_CTX_set_default_verify_dir(ctx);
