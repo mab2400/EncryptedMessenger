@@ -360,20 +360,28 @@ void handle_one_msg_client(BIO *clnt)
 }
 
 /* returns a boolean -- true if matches, false otherwise */ 
-/*
-int pass_valid(char *username, char *try_cstr) {
-  
-   std::string try_pass(try_cstr);
-   // TODO: retrieve old password hash from password file
-   std::string old_hash("$6$/gDoqCFIni4hdevD$TdD35OXYWJtGzmdwWyC0fuWFTTgzA7kGWyIL8J8B3r2/bk91p1zNSiD9cIuBPhN8lofDxNHPFHurXuZoziViQ.");
+int check_pass_valid(char *username, char *try_cstr) {
+    
+    // retrieve password entry
+    char passfilename[256];
+    snprintf(passfilename, sizeof(passfilename), "users/%s/password.txt", username);
+
+    FILE *passfile = fopen(passfilename, "r");
+    char entry[4096];
+    fgets(entry, sizeof(entry), passfile);
+    fclose(passfile);
+    std::cout << "entry: " << entry << std::endl;
+    
+    std::string old_hash(entry);
 
     // check hash
     size_t old_salt_len = old_hash.find_last_of('$');
     std::cout << "salt len: " <<  old_salt_len << std::endl;
-    
+
     std::string old_salt = old_hash.substr(0, old_salt_len);
     std::cout << "old salt: " << old_salt << std::endl;
 
+    std::string try_pass(try_cstr);
     std::string try_hash(crypt(try_pass.c_str(), old_salt.c_str()));
     std::cout << "encrypted: " << try_hash << std::endl;
 
@@ -382,10 +390,8 @@ int pass_valid(char *username, char *try_cstr) {
 
     return match == 0;
 }
-*/
 
-/* changes the user's password by generating a new hash */
-/*
+/* changes the user's password by putting a new hash in their file */
 int replace_pass(char *username, char *new_pass) {
     std::cout << "string to encrypt: " << new_pass << std::endl;
 
@@ -395,10 +401,17 @@ int replace_pass(char *username, char *new_pass) {
     
     char *new_hash = crypt(new_pass, new_salt);
     std::cout << "encrypted: " << new_hash << std::endl;
-    
+   
+    char passfilename[256];
+    snprintf(passfilename, sizeof(passfilename), "users/%s/password.txt", username);
+
+    FILE *passfile = fopen(passfilename, "w");
+    fputs(new_hash, passfile);
+    fclose(passfile);
+
     return 0;
+
 }
-*/
 
 
 int main()
@@ -524,17 +537,21 @@ int main()
 		return -1;
 	    }
 
-	    /* TODO: AUTHENTICATION:
-	     * Now that we have the Username and Password, we need to verify that
-	     * the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
-	     * - Probably will involve checking the password against the one in users/<username>/password.txt.
-	     */
+	    // Now that we have the Username and Password, we need to verify that
+	    // the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
+  
+            int passwordOk = check_pass_valid(username, plain_pass);
+            
 
 	    // If CHANGEPW, then save the new password into users/<username>/password.txt 
 	    // Execute the shell script: save-password.sh (which takes in username + password)
+
+
 	    if(is_changepw)
 	    {
-		pid_t pid = fork();
+                replace_pass(username, new_pwd);
+		
+                /* pid_t pid = fork();
 		if (pid < 0)
 		{
 		    fprintf(stderr, "fork failed\n");
@@ -545,6 +562,7 @@ int main()
 		    exit(1);
 		}
 		waitpid(pid, NULL, 0);
+                */
 	    }
 
 	    /* Read the CSR from the rest of the request body.
