@@ -11,6 +11,7 @@
 #include <strings.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <iostream>
@@ -192,6 +193,8 @@ int main(int argc, char **argv)
 	while((ret = BIO_gets(buf_io, request2, 100)) > 0)
 	    fwrite(request2, 1, ret, signed_cert);
 	fclose(signed_cert);
+
+	chmod(cert_file, 0600);
 
 	/* ================================== Free memory structures =============================== */ 
 
