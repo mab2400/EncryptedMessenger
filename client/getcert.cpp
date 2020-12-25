@@ -180,7 +180,7 @@ int main(int argc, char **argv)
 	while((ret1 = BIO_gets(buf_io, line2, 1000)) > 0)
 	{
 	    printf("%s", line2);
-	    if(strncmp(line2, "Error:", strlen("Error:"))==0)
+	    if(strncmp(line2, "ERROR!", strlen("ERROR!"))==0)
 	    {
 		char priv_key_name[1000];
 		snprintf(priv_key_name, strlen("-priv.key.pem") + strlen(argv[2]) + 1, "%s-priv.key.pem", argv[2]); 

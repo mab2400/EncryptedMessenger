@@ -88,6 +88,8 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
         waitpid(pid, NULL, 0);
     }
 
+    std::cout << "user cert fname: " + get_user_cert_fname(sender) << std::endl;
+    std::cout << "user pkey fname: " + get_user_pkey_fname(sender) << std::endl;
     BIO *tbio = BIO_new_file(both_fname.c_str(), "r");
     if (!tbio)
         throw std::runtime_error("BIO_new_file() failed");
