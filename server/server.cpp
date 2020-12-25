@@ -341,6 +341,7 @@ void handle_one_msg_client(BIO *clnt)
 }
 
 /* returns a boolean -- true if matches, false otherwise */ 
+/*
 int pass_valid(char *username, char *try_cstr) {
   
    std::string try_pass(try_cstr);
@@ -361,10 +362,11 @@ int pass_valid(char *username, char *try_cstr) {
     std::cout << "match is " << match << std::endl;
 
     return match == 0;
-
 }
+*/
 
 /* changes the user's password by generating a new hash */
+/*
 int replace_pass(char *username, char *new_pass) {
     std::cout << "string to encrypt: " << new_pass << std::endl;
 
@@ -376,9 +378,8 @@ int replace_pass(char *username, char *new_pass) {
     std::cout << "encrypted: " << new_hash << std::endl;
     
     return 0;
-
-
 }
+*/
 
 
 int main()

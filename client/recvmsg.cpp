@@ -139,7 +139,8 @@ int main(int argc, char **argv)
 
     std::string sender = GET_msg(ctx, msgmem);
     GET_recver_cert(ctx, sender);
-    process_msg(sender, msgmem);
+    char *sender_c_str = const_cast<char*> (sender.c_str());
+    process_msg(sender_c_str, msgmem);
 
     BIO_free(msgmem);
     SSL_CTX_free(ctx); 
