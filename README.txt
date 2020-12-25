@@ -68,4 +68,6 @@ Client side: ./test5.sh
 A user must have one of the usernames given in users.txt.
 
 Error message: 
-ERROR! Invalid username
+HTTP/1.0 400 Bad Request
+
+Error: Invalid username
