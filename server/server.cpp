@@ -240,13 +240,12 @@ void handle_sendmsg_2(BIO *clnt,
         throw std::runtime_error("could not read msg contents from client");
 
     std::string fname = get_msg_fname(recver, SMALLEST_UNUSED);
-    write_string_to_file(fname, recver + "\n");
-    write_string_to_file(fname, std::string(buf.get(), content_length));
+    write_string_to_file(fname, sender + "\n" + std::string(buf.get(), content_length));
     BIO_mywrite(clnt, "HTTP/1.0 200 OK\r\n\r\n");
 }
 
 /* send one encrypted message to client */
-void handle_recvmsg(BIO *clnt, std::string recver)
+void handle_recvmsg_1(BIO *clnt, std::string recver)
 {
     if (!is_valid_username(recver))
         throw std::runtime_error("bad recver username");
@@ -255,16 +254,33 @@ void handle_recvmsg(BIO *clnt, std::string recver)
     std::string data = read_file_into_string(msg_fname);
 
     int sender_pos_end = data.find("\n");
-    std::string sender = data.substr(0, sender_pos_end - 1);
+    std::string sender = data.substr(0, sender_pos_end);
     std::string msg = data.substr(sender_pos_end + 1);
 
     BIO_mywrite(clnt, "HTTP/1.0 200 OK\r\n"
-                      "Recver: " + sender + "\r\n"
+                      "Sender: " + sender + "\r\n"
                       "\r\n");
     BIO_mywrite(clnt, msg);
 
     std::remove(msg_fname.c_str());
 }
+
+/* client tells us who the sender was, we send the sender's cert */
+void handle_recvmsg_2(BIO *clnt, std::string sender)
+{
+    std::cerr << "handle_recvmsg_2" << std::endl
+              << "Sender=" << sender << std::endl;
+
+    if (!is_valid_username(sender))
+        throw std::runtime_error("bad sender username");
+
+    std::string cert_fname = USERDIR + sender + "/cert";
+    std::string cert = read_file_into_string(cert_fname);
+
+    BIO_mywrite(clnt, "HTTP/1.0 200 OK\r\n\r\n");
+    BIO_mywrite(clnt, cert);
+}
+
 
 /* handle one connection from sendmsg or recvmsg */
 void handle_one_msg_client(BIO *clnt)
@@ -284,9 +300,10 @@ void handle_one_msg_client(BIO *clnt)
 
     int is_sendmsg_1 = (line.find("GET /sendmsg/1 HTTP") != std::string::npos);
     int is_sendmsg_2 = (line.find("POST /sendmsg/2 HTTP") != std::string::npos);
-    int is_recvmsg = (line.find("GET /recvmsg HTTP") != std::string::npos);
+    int is_recvmsg_1 = (line.find("GET /recvmsg/1 HTTP") != std::string::npos);
+    int is_recvmsg_2 = (line.find("GET /recvmsg/2 HTTP") != std::string::npos);
 
-    if (!(is_sendmsg_1 || is_sendmsg_2 || is_recvmsg)) {
+    if (!(is_sendmsg_1 || is_sendmsg_2 || is_recvmsg_1 || is_recvmsg_2)) {
         throw std::runtime_error("HTTP bad first line");
     }
 
@@ -316,8 +333,10 @@ void handle_one_msg_client(BIO *clnt)
         handle_sendmsg_1(clnt, sender, recver);
     else if (is_sendmsg_2)
         handle_sendmsg_2(clnt, sender, recver, content_length);
-    else if (is_recvmsg)
-        handle_recvmsg(clnt, recver);
+    else if (is_recvmsg_1)
+        handle_recvmsg_1(clnt, recver);
+    else if (is_recvmsg_2)
+        handle_recvmsg_2(clnt, sender);
 }
 
 int main()
