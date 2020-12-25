@@ -116,16 +116,14 @@ void ssl_client_cleanup(struct client_ctx *cctx)
     SSL_free(cctx->ssl);
 }
 
-int handle_error(struct client_ctx *client_ctx, char *error_msg, SSL_CTX *ctx)
+void handle_error(struct client_ctx *client_ctx, char *error_msg)
 {
-    fprintf(stderr, "Error: %s\n", error_msg);
+    fprintf(stderr, "ERROR! %s\n", error_msg);
     char error_to_send[1000];
-    sprintf(error_to_send, "Error: %s\r\n\r\n", error_msg);
+    sprintf(error_to_send, "ERROR! %s\r\n\r\n", error_msg);
     BIO_puts(client_ctx->buf_io, error_to_send);
     BIO_flush(client_ctx->buf_io);
     ssl_client_cleanup(client_ctx);
-    SSL_CTX_free(ctx);
-    return -1;
 }
 
 int ssl_client_accept(struct client_ctx *cctx,
@@ -499,7 +497,8 @@ int main()
 		{
 		    char error[1000];
 		    snprintf(error, strlen("Invalid username") + 1, "Invalid username");
-		    return handle_error(client_ctx, error, ctx);
+		    handle_error(client_ctx, error);
+		    continue;
 		}
 
 	    } else {
@@ -567,6 +566,14 @@ int main()
 	    // the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
   
             //int passwordOk = check_pass_valid(username, plain_pass);
+	    //
+	    // TODO FOR MIA: If passwords do not match:
+	    /*
+		char error[1000];
+		snprintf(error, strlen("Incorrect password") + 1, "Incorrect password");
+		handle_error(client_ctx, error);
+		continue;
+	    */
             
 
 	    // If CHANGEPW, then save the new password into users/<username>/password.txt 
