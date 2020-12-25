@@ -16,8 +16,9 @@ do
     user=${l[0]}
     mkdir $user
     cd $user
+    passhash=${l[1]}
     password=${l[2]}
-    echo $password > password.txt
+    echo $passhash > password.txt
     mkdir pending
     cd ..
 done < "$input"
