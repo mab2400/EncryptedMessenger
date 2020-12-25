@@ -360,6 +360,7 @@ void handle_one_msg_client(BIO *clnt)
 }
 
 /* returns a boolean -- true if matches, false otherwise */ 
+/*
 int check_pass_valid(char *username, char *try_cstr) {
     
     // retrieve password entry
@@ -390,8 +391,10 @@ int check_pass_valid(char *username, char *try_cstr) {
 
     return match == 0;
 }
+*/
 
 /* changes the user's password by putting a new hash in their file */
+/*
 int replace_pass(char *username, char *new_pass) {
     std::cout << "string to encrypt: " << new_pass << std::endl;
 
@@ -412,6 +415,7 @@ int replace_pass(char *username, char *new_pass) {
     return 0;
 
 }
+*/
 
 
 int main()
@@ -476,6 +480,11 @@ int main()
 	    {
 		strncpy(username, plain_user, strlen(plain_user)-2); // -2 to get rid of \r\n at the end 
 		username[strlen(plain_user)-2] = 0; // null-terminate it
+		if(!is_valid_username(username)) 
+		{
+		    fprintf(stderr, "Invalid username\n");
+		    return -1;
+		}
 	    } else {
 		fprintf(stderr, "Ill-formatted header\n");
 		return -1;
