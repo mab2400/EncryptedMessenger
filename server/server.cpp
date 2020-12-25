@@ -118,9 +118,9 @@ void ssl_client_cleanup(struct client_ctx *cctx)
 
 void handle_error(struct client_ctx *client_ctx, char *error_msg)
 {
-    fprintf(stderr, "ERROR! %s\n", error_msg);
+    fprintf(stderr, "Error: %s\n", error_msg);
     char error_to_send[1000];
-    sprintf(error_to_send, "ERROR! %s\r\n\r\n", error_msg);
+    sprintf(error_to_send, "HTTP/1.0 400 Bad Request\r\n\r\nError: %s\r\n", error_msg);
     BIO_puts(client_ctx->buf_io, error_to_send);
     BIO_flush(client_ctx->buf_io);
     ssl_client_cleanup(client_ctx);
@@ -324,10 +324,7 @@ void handle_one_msg_client(BIO *clnt)
 
     // read first line
     if (BIO_mygets(clnt, line) <= 0)
-    {
-	std::cout << "LINE: " + line << std::endl;
         throw std::runtime_error("BIO_mygets failed (failed to read first line)");
-    }
     
     std::cerr << line << std::endl;
 

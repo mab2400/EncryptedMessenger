@@ -180,10 +180,14 @@ int main(int argc, char **argv)
 	while((ret1 = BIO_gets(buf_io, line2, 1000)) > 0)
 	{
 	    printf("%s", line2);
-	    if(strncmp(line2, "ERROR!", strlen("ERROR!"))==0)
+	    if(strncmp(line2, "HTTP/1.0 400 Bad Request", strlen("HTTP/1.0 400 Bad Request"))==0)
 	    {
 		char priv_key_name[1000];
 		snprintf(priv_key_name, strlen("-priv.key.pem") + strlen(argv[2]) + 1, "%s-priv.key.pem", argv[2]); 
+	        BIO_gets(buf_io, line2, 1000); 
+		printf("%s", line2);
+	        BIO_gets(buf_io, line2, 1000); 
+		printf("%s", line2);
 		remove_file(priv_key_name);
 		BIO_free_all(buf_io);
 		SSL_CTX_free(ctx); 
