@@ -25,6 +25,16 @@ std::string get_user_cert_fname(std::string username)
     return username + "-cert.pem";
 }
 
+std::string get_user_pkey_fname(std::string username)
+{
+    return username + "-priv.key.pem";
+}
+
+std::string get_user_both_fname(std::string username)
+{
+    return username + "-both.pem";
+}
+
 SSL_CTX *create_ssl_ctx(const char *cert_path)
 {
     SSL_CTX *ctx;

@@ -79,7 +79,7 @@ std::string GET_msg(SSL_CTX *ctx, BIO *msgmem)
 }
 
 /* one GET request to get sender's certificate from server */
-void GET_recver_cert(SSL_CTX *ctx, std::string sender)
+void GET_sender_cert(SSL_CTX *ctx, std::string sender)
 {
     SSL *ssl = create_SSL(ctx);
     BIO *server = myssl_connect(hostname, CERT_PORT, ssl);
@@ -116,7 +116,7 @@ void GET_recver_cert(SSL_CTX *ctx, std::string sender)
     cleanup(server, ssl);
 }
 
-void process_msg(char *sender, BIO *msgmem)
+void process_msg(std::string sender, BIO *msgmem)
 {
     std::string cert_fname = get_user_cert_fname(sender);
 }
@@ -137,10 +137,14 @@ int main(int argc, char **argv)
 
     BIO *msgmem = create_mem_bio();
 
+    // get the message
     std::string sender = GET_msg(ctx, msgmem);
-    GET_recver_cert(ctx, sender);
-    char *sender_c_str = const_cast<char*> (sender.c_str());
-    process_msg(sender_c_str, msgmem);
+
+    // get the sender's certificate
+    GET_sender_cert(ctx, sender);
+
+    // decrypt and verify message
+    process_msg(sender, msgmem);
 
     BIO_free(msgmem);
     SSL_CTX_free(ctx); 

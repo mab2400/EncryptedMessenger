@@ -72,12 +72,64 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
     SSL *ssl = create_SSL(ctx);
     BIO *server = myssl_connect(hostname, CERT_PORT, ssl);
 
-    std::string msg = read_file_into_string(msg_fname);
-    int content_length = msg.length();
+    /* SIGN USING SENDER CERT/PKEY */
 
-    // TODO: encrypt the msg using recver-cert
+    int flags = CMS_DETACHED | CMS_STREAM;
+
+    // this file shall contain both the sender's cert and pkey
+    std::string both_fname = get_user_both_fname(sender);
+    pid_t pid = fork();
+    if (pid < 0) {
+        throw std::runtime_error("fork() failed");
+    } else if (pid == 0) {
+        execl("./catter.sh", "catter.sh",
+              get_user_cert_fname(sender).c_str(),
+              get_user_pkey_fname(sender).c_str(),
+              both_fname.c_str(), (char *)0);
+    }
+
+    BIO *tbio = BIO_new_file(both_fname.c_str(), "r");
+    if (!tbio)
+        throw std::runtime_error("BIO_new_file() failed");
+
+    X509 *scert = PEM_read_bio_X509(tbio, NULL, 0, NULL);
+    BIO_reset(tbio);
+    EVP_PKEY *skey = PEM_read_bio_PrivateKey(tbio, NULL, 0, NULL);
+    if (!scert || !skey)
+        throw std::runtime_error("PEM_read_bio_X509() or PEM_read_bio_PrivateKey() failed");
+
+    // open content being signed
+    BIO *original_msg = create_mem_bio();
+    BIO_read_from_file(original_msg, msg_fname);
+
+    // sign content
+    CMS_ContentInfo *cms = CMS_sign(scert, skey, NULL, original_msg, flags);
+
+    if (!(flags & CMS_STREAM))
+        BIO_reset(original_msg);
+
+    /* Write out S/MIME message */
+    BIO *signed_msg = create_mem_bio();
+    if (!SMIME_write_CMS(signed_msg, cms, original_msg, flags))
+        throw std::runtime_error("SMIME_write_CMS() failed");
+        
+
+    /* ENCRYPT USING RECVER CERT */
+
+
+
+
+    // std::string msg = read_file_into_string(msg_fname);
+    // int content_length = msg.length();
+
+    /* SEND REQ TO SERVER */
 
     std::cerr << "-----------------------------------" << std::endl;
+
+    // hack to get length
+    // TODO: change this from signed_msg to encrypted_msg
+    char **unused;
+    int content_length = BIO_get_mem_data(signed_msg, unused);
 
     char req[1000];
     snprintf(req, sizeof(req), "POST /sendmsg/2 HTTP/1.0\r\n"
@@ -92,7 +144,7 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
     std::cerr << "Sent:" << std::endl << req;
 
     // send msg to the server
-    BIO_mywrite(server, msg);
+    BIO_to_BIO_until_close(signed_msg, server);
     
     // read first line
     std::string line;
