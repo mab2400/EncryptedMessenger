@@ -29,10 +29,11 @@
 
 #define  BUFSIZE    4096
 
-#define  INTER_CERT   "certs/ca/intermediate/certs/ca-chain.cert.pem"
-#define  SERVER_CERT  "certs/ca/server/certs/server.cert.pem"
-#define  SERVER_KEY   "certs/ca/server/private/server.key.pem"
+#define  INTER_CERT       "certs/ca/intermediate/certs/ca-chain.cert.pem"
+#define  SERVER_CERT      "certs/ca/server/certs/server.cert.pem"
+#define  SERVER_KEY       "certs/ca/server/private/server.key.pem"
 #define  SERVER_KEY_PASS  "topsecretserverpassword"
+#define  INTER_KEY_PASS   "lesstopsecretpassword" 
 
 #define  USERDIR      "users/"
 
@@ -67,10 +68,10 @@ SSL_CTX *create_ssl_ctx()
     if (SSL_CTX_use_certificate_file(ctx, SERVER_CERT, SSL_FILETYPE_PEM) != 1)
         die("SSL_CTX_use_certificate_file() failed");
 
-    SSL_CTX_set_default_passwd_cb(ctx, &pkey_passwd_cb);
+    SSL_CTX_set_default_passwd_cb(ctx, &pkey_passwd_cb); // call this
 
-    char passwdbuf[256];
-    SSL_CTX_set_default_passwd_cb_userdata(ctx, passwdbuf);
+    char passwdbuf[256]; 
+    SSL_CTX_set_default_passwd_cb_userdata(ctx, passwdbuf); // call this before use_private_key
 
     if (SSL_CTX_use_PrivateKey_file(ctx, SERVER_KEY, SSL_FILETYPE_PEM) != 1)
         die("SSL_CTX_use_PrivateKey_file() failed");
@@ -616,13 +617,14 @@ int main()
 
 	    // Execute the script that creates the certificate from the CSR (takes in the username) 
 	    // Saves the client cert in the file /users/<username>/cert
+	    // TODO: This is where the password for the intermediate cert is needed.
 	    pid_t pid = fork();
 	    if (pid < 0)
 	    {
 		fprintf(stderr, "fork failed\n");
 		exit(1);
 	    } else if (pid == 0) {
-		execl("./gen-client-cert.sh", "gen-client-cert.sh", username, (char *) 0);
+		execl("./gen-client-cert.sh", "gen-client-cert.sh", username, INTER_KEY_PASS, (char *) 0);
 		fprintf(stderr, "execl failed\n");
 		return -1;
 	    }
