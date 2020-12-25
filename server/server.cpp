@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <crypt.h>
 
 #include <algorithm>
 #include <string>
@@ -319,6 +320,50 @@ void handle_one_msg_client(BIO *clnt)
     else if (is_recvmsg)
         handle_recvmsg(clnt, recver);
 }
+
+/* returns a boolean -- true if matches, false otherwise */ 
+int pass_valid(char *username, char *try_pass) {
+ // TODO: retrieve old password hash from password file
+ char *old_hash = "$6$/gDoqCFIni4hdevD$TdD35OXYWJtGzmdwWyC0fuWFTTgzA7kGWyIL8J8B3r2/bk91p1zNSiD9cIuBPhN8lofDxNHPFHurXuZoziViQ.";
+
+  // check hash
+  char *old_salt_end = strrchr(old_hash, '$');
+  int salt_len = old_salt_end - old_hash;
+  printf("salt len: %d\n", salt_len);
+
+  char *old_salt = new char[salt_len + 1];
+  old_salt[salt_len] = 0;
+  strncpy(old_salt, old_hash, salt_len);
+  printf("old salt: %s\n", old_salt);
+
+  char *try_hash = crypt(try_pass, old_salt);
+  printf("encrypted: %s\n", try_hash);
+
+  int match = strcmp(old_hash, try_hash);
+  printf("match is %d\n", match);
+
+  delete[] old_salt;
+ 
+  return match == 0;
+
+}
+
+/* changes the user's password by generating a new hash */
+int replace_pass(char *username, char *new_pass) {
+  printf("string to encrypt: %s\n", new_pass);
+
+  char saltbuf[256];
+  char *new_salt = crypt_gensalt_rn(NULL, 0, NULL, 0, saltbuf, sizeof(saltbuf));
+  printf("generated salt: %s\n", new_salt);
+  
+  char *new_hash = crypt(new_pass, new_salt);
+  printf("encrypted: %s\n", new_hash);
+  
+  return 0;
+
+
+}
+
 
 int main()
 {
