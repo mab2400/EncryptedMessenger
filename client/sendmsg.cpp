@@ -5,11 +5,9 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#include <stdio.h>
-#include <strings.h>
-#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 #include <iostream>
 #include <fstream>
@@ -72,12 +70,98 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
     SSL *ssl = create_SSL(ctx);
     BIO *server = myssl_connect(hostname, CERT_PORT, ssl);
 
-    std::string msg = read_file_into_string(msg_fname);
-    int content_length = msg.length();
+    /* SIGN USING SENDER CERT/PKEY */
 
-    // TODO: encrypt the msg using recver-cert
+    int flags = CMS_DETACHED | CMS_STREAM;
+
+    // this file shall contain both the sender's cert and pkey
+    std::string both_fname = get_user_both_fname(sender);
+    pid_t pid = fork();
+    if (pid < 0) {
+        throw std::runtime_error("fork() failed");
+    } else if (pid == 0) {
+        execl("./catter.sh", "catter.sh",
+              get_user_cert_fname(sender).c_str(),
+              get_user_pkey_fname(sender).c_str(),
+              both_fname.c_str(), (char *)0);
+    } else {
+        waitpid(pid, NULL, 0);
+    }
+
+    BIO *tbio = BIO_new_file(both_fname.c_str(), "r");
+    if (!tbio)
+        throw std::runtime_error("BIO_new_file() failed");
+
+    X509 *scert = PEM_read_bio_X509(tbio, NULL, 0, NULL);
+    BIO_reset(tbio);
+    EVP_PKEY *skey = PEM_read_bio_PrivateKey(tbio, NULL, 0, NULL);
+    if (!scert || !skey)
+        throw std::runtime_error("PEM_read_bio_X509() or PEM_read_bio_PrivateKey() failed");
+
+    // open content being signed
+    BIO *original_msg = BIO_new_file(msg_fname, "r");
+    if (!original_msg)
+        throw std::runtime_error("BIO_new_file() failed");
+
+
+    // sign content
+    CMS_ContentInfo *cms = CMS_sign(scert, skey, NULL, original_msg, flags);
+
+    if (!(flags & CMS_STREAM))
+        BIO_reset(original_msg);
+
+    // write out S/MIME message
+    BIO *signed_msg = create_mem_bio();
+    if (!SMIME_write_CMS(signed_msg, cms, original_msg, flags))
+        throw std::runtime_error("SMIME_write_CMS() failed");
+    
+    CMS_ContentInfo_free(cms);
+    EVP_PKEY_free(skey);
+    X509_free(scert);
+    BIO_free(tbio);
+    BIO_free(original_msg);
+
+    std::cerr << "Signing using sender cert/key successful" << std::endl;
+
+    /* ENCRYPT USING RECVER CERT */
+    flags = CMS_STREAM;
+
+    tbio = BIO_new_file(get_user_cert_fname(recver).c_str(), "r");
+    if (!tbio)
+        throw std::runtime_error("BIO_new_file() failed");
+
+    X509 *rcert = PEM_read_bio_X509(tbio, NULL, 0, NULL);
+    if (!rcert)
+        throw std::runtime_error("PEM_read_bio_X509() failed");
+
+    STACK_OF(X509) *recips = sk_X509_new_null();
+    if (!recips || !sk_X509_push(recips, rcert))
+        throw std::runtime_error("sk_X509_new_null() or sk_X509_push() failed");
+
+    rcert = NULL;
+
+    cms = CMS_encrypt(recips, signed_msg, EVP_des_ede3_cbc(), flags);
+    if (!cms)
+        throw std::runtime_error("CMS_encrypt() failed");
+
+    BIO *encrypted_msg = create_mem_bio();
+    if (!SMIME_write_CMS(encrypted_msg, cms, signed_msg, flags))
+        throw std::runtime_error("SMIME_write_CMS() failed");
+
+    std::cerr << "Ecryption using recver cert successful" << std::endl;
+    
+    CMS_ContentInfo_free(cms);
+    X509_free(rcert);
+    sk_X509_pop_free(recips, X509_free);
+    BIO_free(tbio);
+    BIO_free(signed_msg);
+
+    /* SEND REQ TO SERVER */
 
     std::cerr << "-----------------------------------" << std::endl;
+
+    char *data;
+    int content_length = BIO_get_mem_data(encrypted_msg, &data);
 
     char req[1000];
     snprintf(req, sizeof(req), "POST /sendmsg/2 HTTP/1.0\r\n"
@@ -92,7 +176,7 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
     std::cerr << "Sent:" << std::endl << req;
 
     // send msg to the server
-    BIO_mywrite(server, msg);
+    BIO_mywrite(server, std::string(data, content_length));
     
     // read first line
     std::string line;
@@ -106,6 +190,7 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
 
     BIO_skip_headers(server);
 
+    BIO_free(encrypted_msg);
     cleanup(server, ssl);
 }
 
