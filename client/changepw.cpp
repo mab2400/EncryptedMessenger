@@ -51,8 +51,6 @@ int main(int argc, char **argv)
 	const SSL_METHOD *meth;
 	int err; char *s;
 
-	int ilen;
-
 	struct sockaddr_in sin;
 	int sock;
 	struct hostent *he;
@@ -99,9 +97,6 @@ int main(int argc, char **argv)
 
 	BIO *buf_io;
 	BIO *ssl_bio;
-	char rbuf[1024];
-	char wbuf[1024];
-
 	buf_io = BIO_new(BIO_f_buffer()); /* buf_io is type BIO * */
 	ssl_bio = BIO_new(BIO_f_ssl()); /* ssl_bio is type BIO * */
 	BIO_set_ssl(ssl_bio, ssl, BIO_CLOSE);
