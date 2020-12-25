@@ -1,6 +1,6 @@
 CC=g++
 CXXFLAGS=-g -Wall -std=c++17
-LDLIBS=-lssl -lcrypto -lstdc++fs
+LDLIBS=-lssl -lcrypto -lstdc++fs -lcrypt
 	
 
 ALL_PROGRAMS=server 
