@@ -322,44 +322,41 @@ void handle_one_msg_client(BIO *clnt)
 }
 
 /* returns a boolean -- true if matches, false otherwise */ 
-int pass_valid(char *username, char *try_pass) {
- // TODO: retrieve old password hash from password file
- char *old_hash = "$6$/gDoqCFIni4hdevD$TdD35OXYWJtGzmdwWyC0fuWFTTgzA7kGWyIL8J8B3r2/bk91p1zNSiD9cIuBPhN8lofDxNHPFHurXuZoziViQ.";
+int pass_valid(char *username, char *try_cstr) {
+  
+   std::string try_pass(try_cstr);
+   // TODO: retrieve old password hash from password file
+   std::string old_hash("$6$/gDoqCFIni4hdevD$TdD35OXYWJtGzmdwWyC0fuWFTTgzA7kGWyIL8J8B3r2/bk91p1zNSiD9cIuBPhN8lofDxNHPFHurXuZoziViQ.");
 
-  // check hash
-  char *old_salt_end = strrchr(old_hash, '$');
-  int salt_len = old_salt_end - old_hash;
-  printf("salt len: %d\n", salt_len);
+    // check hash
+    size_t old_salt_len = old_hash.find_last_of('$');
+    std::cout << "salt len: " <<  old_salt_len << std::endl;
+    
+    std::string old_salt = old_hash.substr(0, old_salt_len);
+    std::cout << "old salt: " << old_salt << std::endl;
 
-  char *old_salt = new char[salt_len + 1];
-  old_salt[salt_len] = 0;
-  strncpy(old_salt, old_hash, salt_len);
-  printf("old salt: %s\n", old_salt);
+    std::string try_hash(crypt(try_pass.c_str(), old_salt.c_str()));
+    std::cout << "encrypted: " << try_hash << std::endl;
 
-  char *try_hash = crypt(try_pass, old_salt);
-  printf("encrypted: %s\n", try_hash);
+    int match = old_hash == try_hash;
+    std::cout << "match is " << match << std::endl;
 
-  int match = strcmp(old_hash, try_hash);
-  printf("match is %d\n", match);
-
-  delete[] old_salt;
- 
-  return match == 0;
+    return match == 0;
 
 }
 
 /* changes the user's password by generating a new hash */
 int replace_pass(char *username, char *new_pass) {
-  printf("string to encrypt: %s\n", new_pass);
+    std::cout << "string to encrypt: " << new_pass << std::endl;
 
-  char saltbuf[256];
-  char *new_salt = crypt_gensalt_rn(NULL, 0, NULL, 0, saltbuf, sizeof(saltbuf));
-  printf("generated salt: %s\n", new_salt);
-  
-  char *new_hash = crypt(new_pass, new_salt);
-  printf("encrypted: %s\n", new_hash);
-  
-  return 0;
+    char saltbuf[256];
+    char *new_salt = crypt_gensalt_rn(NULL, 0, NULL, 0, saltbuf, sizeof(saltbuf));
+    std::cout << "generated salt: " << new_salt << std::endl;
+    
+    char *new_hash = crypt(new_pass, new_salt);
+    std::cout << "encrypted: " << new_hash << std::endl;
+    
+    return 0;
 
 
 }
