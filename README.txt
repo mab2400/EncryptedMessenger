@@ -31,3 +31,13 @@ terminate called after throwing an instance of 'std::runtime_error'
   what():  SSL_use_certificate_file() failed
 
 
+TEST 3: User tries to send a message without having a cert =========== 
+
+Server side: ./test3.sh
+Client side: ./test3.sh
+
+A user cannot send a message unless they have their own certificate.
+
+Error message: 
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  SSL_use_certificate_file() failed
