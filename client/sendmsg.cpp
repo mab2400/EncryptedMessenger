@@ -7,7 +7,6 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 
 #include <iostream>
@@ -111,28 +110,58 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
     if (!(flags & CMS_STREAM))
         BIO_reset(original_msg);
 
-    /* Write out S/MIME message */
+    // write out S/MIME message
     BIO *signed_msg = create_mem_bio();
     if (!SMIME_write_CMS(signed_msg, cms, original_msg, flags))
         throw std::runtime_error("SMIME_write_CMS() failed");
-        
+    
+    CMS_ContentInfo_free(cms);
+    EVP_PKEY_free(skey);
+    X509_free(scert);
+    BIO_free(tbio);
+    BIO_free(original_msg);
+
+    std::cerr << "Signing using sender cert/key successful" << std::endl;
 
     /* ENCRYPT USING RECVER CERT */
+    flags = CMS_STREAM;
 
+    tbio = BIO_new_file(get_user_cert_fname(recver).c_str(), "r");
+    if (!tbio)
+        throw std::runtime_error("BIO_new_file() failed");
 
+    X509 *rcert = PEM_read_bio_X509(tbio, NULL, 0, NULL);
+    if (!rcert)
+        throw std::runtime_error("PEM_read_bio_X509() failed");
 
+    STACK_OF(X509) *recips = sk_X509_new_null();
+    if (!recips || !sk_X509_push(recips, rcert))
+        throw std::runtime_error("sk_X509_new_null() or sk_X509_push() failed");
 
-    // std::string msg = read_file_into_string(msg_fname);
-    // int content_length = msg.length();
+    rcert = NULL;
+
+    cms = CMS_encrypt(recips, signed_msg, EVP_des_ede3_cbc(), flags);
+    if (!cms)
+        throw std::runtime_error("CMS_encrypt() failed");
+
+    BIO *encrypted_msg = create_mem_bio();
+    if (!SMIME_write_CMS(encrypted_msg, cms, signed_msg, flags))
+        throw std::runtime_error("SMIME_write_CMS() failed");
+
+    std::cerr << "Ecryption using recver cert successful" << std::endl;
+    
+    CMS_ContentInfo_free(cms);
+    X509_free(rcert);
+    sk_X509_pop_free(recips, X509_free);
+    BIO_free(tbio);
+    BIO_free(signed_msg);
 
     /* SEND REQ TO SERVER */
 
     std::cerr << "-----------------------------------" << std::endl;
 
-    // hack to get length
-    // TODO: change this from signed_msg to encrypted_msg
     char *data;
-    int content_length = BIO_get_mem_data(signed_msg, &data);
+    int content_length = BIO_get_mem_data(encrypted_msg, &data);
 
     char req[1000];
     snprintf(req, sizeof(req), "POST /sendmsg/2 HTTP/1.0\r\n"
@@ -161,6 +190,7 @@ void POST_msg(SSL_CTX *ctx, std::string recver)
 
     BIO_skip_headers(server);
 
+    BIO_free(encrypted_msg);
     cleanup(server, ssl);
 }
 

@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 #include <iostream>
 #include <fstream>
@@ -121,12 +122,69 @@ void GET_sender_cert(SSL_CTX *ctx, std::string sender)
 
 void process_msg(std::string sender, BIO *msgmem)
 {
-    std::string cert_fname = get_user_cert_fname(sender);
+    char *data;
+    size_t content_length = BIO_get_mem_data(msgmem, &data);
+
+    FILE *fp = fopen(".newmsg.txt", "w");
+    if (!fp)
+        throw std::runtime_error("fopen() failed");
+    if (fwrite(data, 1, content_length, fp) != content_length)
+        throw std::runtime_error("fwrite() failed");
+    fclose(fp);
+
+    /* DECRYPT using recver cert and pkey */
+
+    // this file shall contain both the recvers's cert and pkey
+    std::string both_fname = get_user_both_fname(recver);
+    pid_t pid = fork();
+    if (pid < 0) {
+        throw std::runtime_error("fork() failed");
+    } else if (pid == 0) {
+        execl("./catter.sh", "catter.sh",
+              get_user_cert_fname(recver).c_str(),
+              get_user_pkey_fname(recver).c_str(),
+              both_fname.c_str(), (char *)0);
+    } else {
+        waitpid(pid, NULL, 0);
+    }
+
+    BIO *tbio = BIO_new_file(both_fname.c_str(), "r");
+    if (!tbio)
+        throw std::runtime_error("BIO_new_file() failed");
+
+    X509 *rcert = PEM_read_bio_X509(tbio, NULL, 0, NULL);
+    BIO_reset(tbio);
+    EVP_PKEY *rkey = PEM_read_bio_PrivateKey(tbio, NULL, 0, NULL);
+    if (!rcert || !rkey)
+        throw std::runtime_error("PEM_read_bio_X509() or PEM_read_bio_PrivateKey() failed");
+
+    BIO *in = BIO_new_file(".newmsg.txt", "r");
+    if (!in)
+        throw std::runtime_error("BIO_new_file() on newmsg.txt failed");
+
+    CMS_ContentInfo *cms = SMIME_read_CMS(in, NULL);
+    if (!cms) {
+        ERR_print_errors_fp(stderr);
+        throw std::runtime_error("SMIME_read_CMS() on msgmem failed");
+    }
+
+    BIO *decrypted_msg = create_mem_bio();
+    if (!CMS_decrypt(cms, rkey, rcert, NULL, decrypted_msg, 0))
+        throw std::runtime_error("CMS_decrypt() failed");
+
+    std::cerr << "Decryption using recver cert/key successful" << std::endl;
+    
+    CMS_ContentInfo_free(cms);
+    EVP_PKEY_free(rkey);
+    X509_free(rcert);
+    BIO_free(tbio);
+    BIO_free(in);
 
     /* VERIFY using sender cert */
-    
+
+    std::string cert_fname = get_user_cert_fname(sender);
     X509_STORE *st = X509_STORE_new();
-    BIO *tbio = BIO_new_file(cert_fname.c_str(), "r"); // CA cert
+    tbio = BIO_new_file(cert_fname.c_str(), "r");
     if (!tbio)
         throw std::runtime_error("BIO_new_file() failed");
 
@@ -135,7 +193,7 @@ void process_msg(std::string sender, BIO *msgmem)
         throw std::runtime_error("PEM_read_bio_X509() failed");
 
     BIO *cont;
-    CMS_ContentInfo *cms = SMIME_read_CMS(msgmem, &cont);
+    cms = SMIME_read_CMS(decrypted_msg, &cont);
     if (!cms)
         throw std::runtime_error("SMIME_read_CMS() failed");
 
@@ -161,14 +219,29 @@ void process_msg(std::string sender, BIO *msgmem)
         throw std::runtime_error("CMS_verify() failed");
     }
 
-    std::cerr << "Verification Successful" << std::endl;
+    std::cerr << "Verification using sender cert successful" << std::endl;
 
-    char *data;
-    int content_length = BIO_get_mem_data(verified_msg, &data);
-    fwrite(data, 1, content_length, stdout);
+    CMS_ContentInfo_free(cms);
+    sk_X509_pop_free(certs, X509_free);
+    X509_STORE_free(st);
+    BIO_free(tbio);
+    BIO_free(cont);
+    BIO_free(decrypted_msg);
 
-    /* DECRYPT using recver cert and pkey */
+    std::cerr << "Now displaying message (and saving in newmsg.txt)" << std::endl;
 
+    content_length = BIO_get_mem_data(verified_msg, &data);
+    if (fwrite(data, 1, content_length, stdout) != content_length)
+        throw std::runtime_error("fwrite() failed");
+
+    fp = fopen("newmsg.txt", "w");
+    if (!fp)
+        throw std::runtime_error("fopen() failed");
+    if (fwrite(data, 1, content_length, fp) != content_length)
+        throw std::runtime_error("fwrite() failed");
+    fclose(fp);
+
+    BIO_free(verified_msg);
 }
 
 int main(int argc, char **argv)

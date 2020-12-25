@@ -113,6 +113,7 @@ void BIO_to_BIO_until_close(BIO *from, BIO *to)
         if (BIO_write(to, buf, r) != r)
             throw std::runtime_error("BIO_write failed");
     }
+    BIO_flush(to);
 }
 
 /* read file contents into a bio */
