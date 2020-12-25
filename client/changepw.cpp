@@ -82,7 +82,7 @@ int main(int argc, char **argv)
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(25565);
 
-	he = gethostbyname("localhost");
+	he = gethostbyname(argv[1]);
 	memcpy(&sin.sin_addr, (struct in_addr *)he->h_addr, he->h_length);
 	if (connect(sock, (struct sockaddr *)&sin, sizeof sin) < 0) {
 		perror("connect");
@@ -161,7 +161,7 @@ int main(int argc, char **argv)
 	printf("-----------------------------------\n");
 	printf("Sent:\n");
 	sprintf(request, "POST /changepw HTTP/1.0\r\nUsername: %s\r\nPassword: %s\r\nNew Password: %s\r\nContent-Length: %d\r\n\r\n", argv[2], argv[3], argv[4], res);
-	printf(request);
+	printf("%s\n", request);
 	BIO_puts(buf_io, request);
 	BIO_flush(buf_io);
 
@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 	printf("Server said:\n");
 	while((ret1 = BIO_gets(buf_io, line2, 1000)) > 0)
 	{
-	    printf(line2);
+	    printf("%s\n", line2);
 	    BIO_gets(buf_io, line2, 1000); 
 	    if(strncmp(line2, "\r\n", strlen("\r\n") + 1)==0)
 	        break;
