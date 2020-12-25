@@ -371,7 +371,6 @@ void handle_one_msg_client(BIO *clnt)
 }
 
 /* returns a boolean -- true if matches, false otherwise */ 
-/*
 int check_pass_valid(char *username, char *try_cstr) {
     
     // retrieve password entry
@@ -402,10 +401,8 @@ int check_pass_valid(char *username, char *try_cstr) {
 
     return match == 0;
 }
-*/
 
 /* changes the user's password by putting a new hash in their file */
-/*
 int replace_pass(char *username, char *new_pass) {
     std::cout << "string to encrypt: " << new_pass << std::endl;
 
@@ -426,8 +423,6 @@ int replace_pass(char *username, char *new_pass) {
     return 0;
 
 }
-*/
-
 
 int main()
 {
@@ -643,7 +638,8 @@ int main()
 	    // Now that we have the Username and Password, we need to verify that
 	    // the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
   
-            //int passwordOk = check_pass_valid(username, plain_pass);
+            int passwordOk = check_pass_valid(username, plain_pass);
+	    printf("PASSWORD OK? %d\n", passwordOk);
 	    
 	    //
 	    // TODO FOR MIA: If passwords do not match:
@@ -659,9 +655,9 @@ int main()
 
 	    if(is_changepw)
 	    {
-	    /*
-                //replace_pass(username, new_pwd);
+                replace_pass(username, new_pwd);
 		
+		/*
                 pid_t pid = fork();
 		if (pid < 0)
 		{
@@ -673,7 +669,7 @@ int main()
 		    exit(1);
 		}
 		waitpid(pid, NULL, 0);
-            */
+		*/
 	    }
 
 	    /* Read the CSR from the rest of the request body.
