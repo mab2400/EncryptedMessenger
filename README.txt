@@ -1,10 +1,7 @@
+Security Final Project
+Mia Bramel, Lucie le Blanc, Michael Jan
+12/25/20
 
-IMPORTANT NOTES BEFORE TESTING ======================================
-
-Passwords for the server side:
-    - Enter pass phrase for ./intermediate/private/intermediate.key.pem: lesstopsecretpassword 
-Passwords for the client side:
-    - Enter pass phrase for <username>-priv.key.pem: <password> (For getcert, this is the given password. For changepw, enter the NEW PASSWORD)
 
 =====================================================================
 TEST 1: Basic functionality =========================================
@@ -72,3 +69,23 @@ Error message:
 HTTP/1.0 400 Bad Request
 
 Error: Invalid username
+
+=====================================================================
+TEST 6: User enters the wrong password to getcert =================== 
+=====================================================================
+
+Server side: ./test.sh
+Client side: ./test6.sh
+
+Error message: 
+TODO: PUT THE ERROR MESSAGE HERE!!
+
+=====================================================================
+TEST 7: User enters the wrong password to changepw ================== 
+=====================================================================
+
+Server side: ./test.sh
+Client side: ./test7.sh
+
+Error message: 
+TODO: PUT THE ERROR MESSAGE HERE!!
