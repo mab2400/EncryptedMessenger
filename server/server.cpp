@@ -463,7 +463,13 @@ int main()
 	    int is_changepw = 0;
 
 	    // Read the first line of the request to determine which client is connecting
-            BIO_gets(client_ctx->buf_io, request, 100);
+            if(BIO_gets(client_ctx->buf_io, request, 100) <= 0)
+	    {
+	        char error[1000];
+	        snprintf(error, strlen("BIO_gets failed") + 1, "BIO_gets failed");
+	        handle_error(client_ctx, error);
+	        continue;
+	    }
 	    printf("-----------------------------------\n");
 	    printf("%s", request);
 	    char *token_separators = (char *) " "; 
@@ -471,9 +477,10 @@ int main()
 	    char *client_name = strtok(NULL, token_separators);
 
             if (!method || !client_name) {
-                std::cout << "oof" << std::endl;
-                std::cout << "method or client_name is null" << std::endl;
-		// TODO: ERROR HANDLING (400 Bad Request?)
+	        char error[1000];
+	        snprintf(error, strlen("Method or client_name is null") + 1, "Method or client_name is null");
+	        handle_error(client_ctx, error);
+	        continue;
             }
 
 	    client_name++; // Move past the "/" 
@@ -482,11 +489,25 @@ int main()
 
 	    /* Extracting the username and password from the next two header lines: */
 	    // Read the next header line, aka the New Password for changepw (blank if getcert).
-	    BIO_gets(client_ctx->buf_io, request, 100);
+	    if(BIO_gets(client_ctx->buf_io, request, 100) <= 0)
+	    {
+	        char error[1000];
+	        snprintf(error, strlen("BIO_gets failed") + 1, "BIO_gets failed");
+	        handle_error(client_ctx, error);
+	        continue;
+	    }
 	    printf("%s", request);
 	    char username[100];
 	    char *user_setup = strtok(request, token_separators);
 	    char *plain_user = strtok(NULL, token_separators);
+	    if(!user_setup || !plain_user)
+	    {
+	        char error[1000];
+	        snprintf(error, strlen("User header or username is null") + 1, "User header or username is null");
+	        handle_error(client_ctx, error);
+	        continue;
+	    }
+
 	    if(strncmp(user_setup, "Username:", strlen("Username:") + 1)==0)
 	    {
 		strncpy(username, plain_user, strlen(plain_user)-2); // -2 to get rid of \r\n at the end 
@@ -498,72 +519,132 @@ int main()
 		    handle_error(client_ctx, error);
 		    continue;
 		}
-
 	    } else {
-		fprintf(stderr, "Ill-formatted header\n");
-		return -1;
+		char error[1000];
+		snprintf(error, strlen("Ill-formatted header") + 1, "Ill-formatted header");
+		handle_error(client_ctx, error);
+		continue;
 	    }
 
-	    BIO_gets(client_ctx->buf_io, request, 100);
+	    if(BIO_gets(client_ctx->buf_io, request, 100) <= 0)
+	    {
+	        char error[1000];
+	        snprintf(error, strlen("BIO_gets failed") + 1, "BIO_gets failed");
+	        handle_error(client_ctx, error);
+	        continue;
+	    }
 	    printf("%s", request);
 	    char password[100];
 	    char *pass_setup = strtok(request, token_separators);
 	    char *plain_pass = strtok(NULL, token_separators);
+	    if(!pass_setup || !plain_pass)
+	    {
+	        char error[1000];
+	        snprintf(error, strlen("Password header or password is null") + 1, "Password header or password is null");
+	        handle_error(client_ctx, error);
+	        continue;
+	    }
 	    if(strncmp(pass_setup, "Password:", strlen("Password:") + 1)==0)
 	    {
+		if(strlen(plain_pass)<=4)
+		{
+		    char error[1000];
+		    snprintf(error, strlen("Password too short") + 1, "Password too short");
+		    handle_error(client_ctx, error);
+		    continue;
+		}
 		strncpy(password, plain_pass, strlen(plain_pass)-2); // -2 to get rid of \r\n at the end 
 		password[strlen(plain_pass)-2] = 0; // null-terminate it
 	    } else {
-		fprintf(stderr, "Ill-formatted header\n");
-		return -1;
+		char error[1000];
+		snprintf(error, strlen("Ill-formatted header") + 1, "Ill-formatted header");
+		handle_error(client_ctx, error);
+		continue;
 	    }
 
 	    // Read the next header line, aka the New Password for changepw (blank if getcert).
 	    char new_pwd[100];
-	    BIO_gets(client_ctx->buf_io, request, 100);
+	    if(BIO_gets(client_ctx->buf_io, request, 100) <= 0)
+	    {
+	        char error[1000];
+	        snprintf(error, strlen("BIO_gets failed") + 1, "BIO_gets failed");
+	        handle_error(client_ctx, error);
+	        continue;
+	    }
 	    printf("%s", request);
 	    char *new_setup = strtok(request, token_separators);
 	    char *new_pass_setup = strtok(NULL, token_separators);
 	    char *new_password = strtok(NULL, token_separators);
+	    if(!new_setup || !new_pass_setup || (!new_password && is_changepw))
+	    {
+	        char error[1000];
+	        snprintf(error, strlen("Password header is ill-formatted") + 1, "Password header is ill-formatted");
+	        handle_error(client_ctx, error);
+	        continue;
+	    }
 	    if((strncmp(new_setup, "New", strlen("New") + 1)==0) && (strncmp(new_pass_setup, "Password:", strlen("Password:") + 1)==0)) 
 	    {
 		if(strlen(new_password)>0)
 		{
 		    strncpy(new_pwd, new_password, strlen(new_password)-2); // -2 to get rid of \r\n at the end 
 		    new_pwd[strlen(new_password)-2] = 0; // null-terminate it
+		} else if(is_changepw) {
+		    char error[1000];
+		    snprintf(error, strlen("No password provided for changepw") + 1, "No password provided for changepw");
+		    handle_error(client_ctx, error);
+		    continue;
 		}
+
 	    } else {
-		fprintf(stderr, "Ill-formatted header\n");
-		return -1;
+		char error[1000];
+		snprintf(error, strlen("Ill-formatted header") + 1, "Ill-formatted header");
+		handle_error(client_ctx, error);
+		continue;
 	    }
 
 	    // Read the next header line, aka the Content-Length for the CSR.
-	    BIO_gets(client_ctx->buf_io, request, 100);
+	    if(BIO_gets(client_ctx->buf_io, request, 100) <= 0)
+	    {
+	        char error[1000];
+	        snprintf(error, strlen("BIO_gets failed") + 1, "BIO_gets failed");
+	        handle_error(client_ctx, error);
+	        continue;
+	    }
 	    printf("%s", request);
 	    char *content_length_word = strtok(request, token_separators);
 	    char *c_l = strtok(NULL, token_separators);
 
             if (!content_length_word || !c_l) {
-                // TODO 400 Bad Request
-                std::cout << "oof" << std::endl;
-                std::cout << "content_length_word or c_l is null" << std::endl;
+		char error[1000];
+		snprintf(error, strlen("Content-length word or value is null") + 1, "Content-Length word or value is null");
+		handle_error(client_ctx, error);
+		continue;
             }
 
             int csr_length = atoi(c_l);
 
 	    // Read the last line, which should be a blank line.
-	    BIO_gets(client_ctx->buf_io, request, 100);
+	    if(BIO_gets(client_ctx->buf_io, request, 100) <= 0)
+	    {
+	        char error[1000];
+	        snprintf(error, strlen("BIO_gets failed") + 1, "BIO_gets failed");
+	        handle_error(client_ctx, error);
+	        continue;
+	    }
 	    printf("%s", request);
 	    if(strncmp(request, "\r\n", strlen("\r\n") + 1)!=0)
 	    {
-		fprintf(stderr, "Ill-formatted header\n");
-		return -1;
+		char error[1000];
+		snprintf(error, strlen("Ill-formatted request") + 1, "Ill-formatted request");
+		handle_error(client_ctx, error);
+		continue;
 	    }
 
 	    // Now that we have the Username and Password, we need to verify that
 	    // the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
   
             //int passwordOk = check_pass_valid(username, plain_pass);
+	    
 	    //
 	    // TODO FOR MIA: If passwords do not match:
 	    /*
@@ -572,17 +653,16 @@ int main()
 		handle_error(client_ctx, error);
 		continue;
 	    */
-            
 
 	    // If CHANGEPW, then save the new password into users/<username>/password.txt 
 	    // Execute the shell script: save-password.sh (which takes in username + password)
 
-
 	    if(is_changepw)
 	    {
+	    /*
                 //replace_pass(username, new_pwd);
 		
-                /* pid_t pid = fork();
+                pid_t pid = fork();
 		if (pid < 0)
 		{
 		    fprintf(stderr, "fork failed\n");
@@ -593,7 +673,7 @@ int main()
 		    exit(1);
 		}
 		waitpid(pid, NULL, 0);
-                */
+            */
 	    }
 
 	    /* Read the CSR from the rest of the request body.
@@ -614,10 +694,16 @@ int main()
 		    break;
 	    }
 	    fclose(csr_file);
+	    if(ret < 0)
+	    {
+	        char error[1000];
+	        snprintf(error, strlen("BIO_gets failed") + 1, "BIO_gets failed");
+	        handle_error(client_ctx, error);
+	        continue;
+	    }
 
 	    // Execute the script that creates the certificate from the CSR (takes in the username) 
 	    // Saves the client cert in the file /users/<username>/cert
-	    // TODO: This is where the password for the intermediate cert is needed.
 	    pid_t pid = fork();
 	    if (pid < 0)
 	    {

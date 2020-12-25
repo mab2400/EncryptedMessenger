@@ -13,5 +13,5 @@ chmod 600 $1-priv.key.pem
 
 # Using the private key to create a certificate signing request (CSR).
 openssl req -new -sha256 -out $1.csr.pem \
-            -key $1-priv.key.pem \
-	    -subj "/C=US/ST=New York/O=COMS4181 Hw2/CN={$1}"
+	    -key $1-priv.key.pem \
+  	    -subj "/C=US/ST=New York/O=COMS4181 Hw2/CN={$1}"
