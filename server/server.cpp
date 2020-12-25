@@ -170,7 +170,7 @@ int remove_file(char *filename)
 	} else if (pid == 0) {
 	    // The shell script removes the given file 
 	    execl("./remove-file.sh", "remove-file.sh", filename, (char *) 0);
-	    fprintf(stderr, "execl failed\n");
+	    fprintf(stderr, "execl failed in remove_file function\n");
 	    exit(1);
 	}
 	
@@ -549,7 +549,7 @@ int main()
 	    // Now that we have the Username and Password, we need to verify that
 	    // the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
   
-            int passwordOk = check_pass_valid(username, plain_pass);
+            //int passwordOk = check_pass_valid(username, plain_pass);
             
 
 	    // If CHANGEPW, then save the new password into users/<username>/password.txt 
@@ -558,7 +558,7 @@ int main()
 
 	    if(is_changepw)
 	    {
-                replace_pass(username, new_pwd);
+                //replace_pass(username, new_pwd);
 		
                 /* pid_t pid = fork();
 		if (pid < 0)
@@ -603,7 +603,7 @@ int main()
 	    } else if (pid == 0) {
 		execl("./gen-client-cert.sh", "gen-client-cert.sh", username, (char *) 0);
 		fprintf(stderr, "execl failed\n");
-		exit(1);
+		return -1;
 	    }
 	    waitpid(pid, NULL, 0);
 	    remove_file(csr_filename); // Deleting the temporary CSR file.
