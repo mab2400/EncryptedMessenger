@@ -4,8 +4,7 @@ IMPORTANT NOTES BEFORE TESTING ======================================
 Passwords for the server side:
     - Enter pass phrase for ./intermediate/private/intermediate.key.pem: lesstopsecretpassword 
 Passwords for the client side:
-    - Enter pass phrase for <username>-priv.key.pem: <password> (For getcert, this is the given password. For changepw, 
-      enter the NEW PASSWORD)
+    - Enter pass phrase for <username>-priv.key.pem: <password> (For getcert, this is the given password. For changepw, enter the NEW PASSWORD)
 
 TEST 1: Basic functionality =========================================
 

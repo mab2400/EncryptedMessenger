@@ -132,7 +132,7 @@ int main(int argc, char **argv)
 	    fprintf(stderr, "fork failed\n");
 	    exit(1);
 	} else if (pid == 0) {
-	    // The shell script creates the CSR file <username>.csr.pem
+	    // The shell script creates the private key <username>-priv.key.pem and CSR file <username>.csr.pem
 	    execl("./gen-client-keys-and-csr.sh", "gen-client-keys-and-csr.sh", argv[2], argv[3], (char *) 0);
 	    fprintf(stderr, "execl failed\n");
 	    exit(1);
@@ -180,6 +180,15 @@ int main(int argc, char **argv)
 	while((ret1 = BIO_gets(buf_io, line2, 1000)) > 0)
 	{
 	    printf("%s", line2);
+	    if(strncmp(line2, "Error:", strlen("Error:"))==0)
+	    {
+		char priv_key_name[1000];
+		snprintf(priv_key_name, strlen("-priv.key.pem") + strlen(argv[2]) + 1, "%s-priv.key.pem", argv[2]); 
+		remove_file(priv_key_name);
+		BIO_free_all(buf_io);
+		SSL_CTX_free(ctx); 
+		return -1;
+	    }
 	    BIO_gets(buf_io, line2, 1000); 
 	    if(strncmp(line2, "\r\n", strlen("\r\n") + 1)==0)
 	        break;

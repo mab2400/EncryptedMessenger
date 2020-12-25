@@ -314,7 +314,10 @@ void handle_one_msg_client(BIO *clnt)
 
     // read first line
     if (BIO_mygets(clnt, line) <= 0)
+    {
+	std::cout << "LINE: " + line << std::endl;
         throw std::runtime_error("BIO_mygets failed (failed to read first line)");
+    }
     
     std::cerr << line << std::endl;
 
@@ -482,7 +485,13 @@ int main()
 		username[strlen(plain_user)-2] = 0; // null-terminate it
 		if(!is_valid_username(username)) 
 		{
-		    fprintf(stderr, "Invalid username\n");
+		    fprintf(stderr, "Error: Invalid username\n");
+		    char error_line[1000];
+		    sprintf(error_line, "Error: Invalid username\r\n\r\n");
+		    BIO_puts(client_ctx->buf_io, error_line);
+		    BIO_flush(client_ctx->buf_io);
+		    ssl_client_cleanup(client_ctx);
+		    SSL_CTX_free(ctx);
 		    return -1;
 		}
 	    } else {
