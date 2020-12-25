@@ -418,7 +418,7 @@ int main()
 	    // Read the first line of the request to determine which client is connecting
             BIO_gets(client_ctx->buf_io, request, 100);
 	    printf("-----------------------------------\n");
-	    printf(request);
+	    printf("%s\n", request);
 	    char *token_separators = (char *) " "; 
 	    char *method = strtok(request, token_separators);
 	    char *client_name = strtok(NULL, token_separators);
@@ -436,7 +436,7 @@ int main()
 	    /* Extracting the username and password from the next two header lines: */
 	    // Read the next header line, aka the New Password for changepw (blank if getcert).
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    printf(request);
+	    printf("%s\n", request);
 	    char username[100];
 	    char *user_setup = strtok(request, token_separators);
 	    char *plain_user = strtok(NULL, token_separators);
@@ -447,7 +447,7 @@ int main()
 	    }
 
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    printf(request);
+	    printf("%s\n", request);
 	    char password[100];
 	    char *pass_setup = strtok(request, token_separators);
 	    char *plain_pass = strtok(NULL, token_separators);
@@ -460,7 +460,7 @@ int main()
 	    // Read the next header line, aka the New Password for changepw (blank if getcert).
 	    char new_pwd[100];
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    printf(request);
+	    printf("%s\n", request);
 	    char *new_setup = strtok(request, token_separators);
 	    char *new_pass_setup = strtok(NULL, token_separators);
 	    char *new_password = strtok(NULL, token_separators);
@@ -475,7 +475,7 @@ int main()
 
 	    // Read the next header line, aka the Content-Length for the CSR.
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    printf(request);
+	    printf("%s\n", request);
 	    char *content_length_word = strtok(request, token_separators);
 	    char *c_l = strtok(NULL, token_separators);
 
@@ -489,7 +489,7 @@ int main()
 
 	    // Read the last line, which should be a blank line.
 	    BIO_gets(client_ctx->buf_io, request, 100);
-	    printf(request);
+	    printf("%s\n", request);
 	    if(strncmp(request, "\r\n", strlen("\r\n") + 1)!=0)
 		exit(1);
 
