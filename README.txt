@@ -56,7 +56,8 @@ Client side: ./test4.sh
 A user cannot send a message unless are using the correct cert version.
 
 Error message: 
-TODO: UPDATE THIS !!!!!! 
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  SSL_use_PrivateKey_file() failed
 
 =====================================================================
 TEST 5: User enters a username that is not one of the given usernames
