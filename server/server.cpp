@@ -116,6 +116,18 @@ void ssl_client_cleanup(struct client_ctx *cctx)
     SSL_free(cctx->ssl);
 }
 
+int handle_error(struct client_ctx *client_ctx, char *error_msg, SSL_CTX *ctx)
+{
+    fprintf(stderr, "Error: %s\n", error_msg);
+    char error_to_send[1000];
+    sprintf(error_to_send, "Error: %s\r\n\r\n", error_msg);
+    BIO_puts(client_ctx->buf_io, error_to_send);
+    BIO_flush(client_ctx->buf_io);
+    ssl_client_cleanup(client_ctx);
+    SSL_CTX_free(ctx);
+    return -1;
+}
+
 int ssl_client_accept(struct client_ctx *cctx,
                       SSL_CTX *ssl_ctx,
                       int servsock, 
@@ -463,9 +475,9 @@ int main()
 	    char *client_name = strtok(NULL, token_separators);
 
             if (!method || !client_name) {
-                // TODO 400 Bad Request
                 std::cout << "oof" << std::endl;
                 std::cout << "method or client_name is null" << std::endl;
+		// TODO: ERROR HANDLING (400 Bad Request?)
             }
 
 	    client_name++; // Move past the "/" 
@@ -485,15 +497,11 @@ int main()
 		username[strlen(plain_user)-2] = 0; // null-terminate it
 		if(!is_valid_username(username)) 
 		{
-		    fprintf(stderr, "Error: Invalid username\n");
-		    char error_line[1000];
-		    sprintf(error_line, "Error: Invalid username\r\n\r\n");
-		    BIO_puts(client_ctx->buf_io, error_line);
-		    BIO_flush(client_ctx->buf_io);
-		    ssl_client_cleanup(client_ctx);
-		    SSL_CTX_free(ctx);
-		    return -1;
+		    char error[1000];
+		    snprintf(error, strlen("Invalid username") + 1, "Invalid username");
+		    return handle_error(client_ctx, error, ctx);
 		}
+
 	    } else {
 		fprintf(stderr, "Ill-formatted header\n");
 		return -1;
