@@ -413,7 +413,6 @@ int main()
             && ssl_client_accept(client_ctx, ctx, servsock_pass, 0) == 0)
         {
 	    char request[1000];
-	    int is_getcert = 0;
 	    int is_changepw = 0;
 
 	    // Read the first line of the request to determine which client is connecting
@@ -431,8 +430,6 @@ int main()
             }
 
 	    client_name++; // Move past the "/" 
-	    if(strncmp(client_name, "getcert", strlen("getcert") + 1)==0)
-		is_getcert = 1;
 	    if(strncmp(client_name, "changepw", strlen("changepw") + 1)==0)
 		is_changepw = 1;
 
@@ -467,12 +464,10 @@ int main()
 	    char *new_setup = strtok(request, token_separators);
 	    char *new_pass_setup = strtok(NULL, token_separators);
 	    char *new_password = strtok(NULL, token_separators);
-	    int new_pwd_provided = 0;
 	    if((strncmp(new_setup, "New", strlen("New") + 1)==0) && (strncmp(new_pass_setup, "Password:", strlen("Password:") + 1)==0)) 
 	    {
 		if(strlen(new_password)>0)
 		{
-		    new_pwd_provided = 1;
 		    strncpy(new_pwd, new_password, strlen(new_password)-2); // -2 to get rid of \r\n at the end 
 		    new_pwd[strlen(new_password)-2] = 0; // null-terminate it
 		}
