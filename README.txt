@@ -78,7 +78,9 @@ Server side: ./test.sh
 Client side: ./test6.sh
 
 Error message: 
-TODO: PUT THE ERROR MESSAGE HERE!!
+HTTP/1.0 400 Bad Request
+
+Error: Incorrect password 
 
 =====================================================================
 TEST 7: User enters the wrong password to changepw ================== 
@@ -88,4 +90,6 @@ Server side: ./test.sh
 Client side: ./test7.sh
 
 Error message: 
-TODO: PUT THE ERROR MESSAGE HERE!!
+HTTP/1.0 400 Bad Request
+
+Error: Incorrect password 
