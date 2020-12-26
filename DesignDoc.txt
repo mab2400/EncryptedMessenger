@@ -1,0 +1,37 @@
+Security Final Project
+Mia Bramel, Lucie le Blanc, Michael Jan
+12/25/20
+
+The setup script creates a users/ directory in the same directory as the server executable, in which the server stores the hashed password for all users, as well as their pending messages. The structure is as follows:
+
+users
+├── user1
+│   ├── cert
+│   ├── password.txt
+│   └── pending
+│       └── 00001
+└── user2
+    ├── cert
+    ├── password.txt
+    └── pending
+        └── 00001
+        └── 00002
+
+In each user's individual directory, "cert" is the user's current certificate.
+
+The "pending" directory contains their pending messages. These are numbered in a stack-like manner: the highest-numbered message is the most recent, and the lowest-numbered message is the least recent. 
+
+The "password.txt" file contains their hashed password, which is used in getcert and changepw to authenticate them. A new salt is generated every time a user calls getcert or changepw, regardless of whether or not the password has changed. In a real system, we would likely also enforce a password length requirement, and would also reject a new password if it was the same as the old password. 
+
+The server executables folder also contains a certs/ directory. This folder contains the certificate authority structure, which holds the client and servers' certificates. In a real scenario, the client and server would be on different machines, and the client would send a separate GET request to the server to retrieve files necessary to verify the server's certificate. In our case, we just decided to have the client read from the same certs/ directory as the server.
+
+Regarding file permission decisions, in the case that multiple client users exist on the same machine, we wanted to ensure that the users cannot read each other’s certificates or private keys. Therefore, we chose to put 600 permissions on the client-side certificates and keys.
+
+sendmsg makes two requests to the server: one GET request to get the receiver’s cert, and one POST request to send the message. Before sending, the message is first signed using the sender’s private key and then encrypted using the receiver’s cert.
+
+recvmsg also makes two requests to the server: one GET request to get a message from the server and another GET request to get the sender’s cert. The receiver then decrypts the message using their own private key and verifies the sender using the sender’s cert.
+
+We chose sign-then-encrypt over encrypt-then-sign to prevent some subtle attacks described in https://crypto.stackexchange.com/questions/5458/should-we-sign-then-encrypt-or-encrypt-then-sign 
+
+Although we didn’t implement it in our solution, in real life the server would be split into two parts: one to handle getcert/changepw and one to handle sendmsg/recvmsg. For instance, they could be on separate machines (or VMs). This is because only getcert and changepw need access to the CA private key to sign client certificates. By separating them from sendmsg/recvmsg, we can ensure that if they are hacked, the CA private key is still safe.
+
