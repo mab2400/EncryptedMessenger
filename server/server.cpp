@@ -372,14 +372,20 @@ void handle_one_msg_client(BIO *clnt)
 
 /* returns a boolean -- true if matches, false otherwise */ 
 int check_pass_valid(char *username, char *try_cstr) {
+
+    std::cout << "user tried password: " << try_cstr << std::endl;
     
     // retrieve password entry
     char passfilename[256];
     snprintf(passfilename, sizeof(passfilename), "users/%s/password.txt", username);
+    std::cout << "passfilename: " << passfilename << std::endl;
 
     FILE *passfile = fopen(passfilename, "r");
     char entry[4096];
     fgets(entry, sizeof(entry), passfile);
+    if (entry[strlen(entry) - 1] == '\n') { 
+        entry[strlen(entry) - 1] = '\0';
+    }
     fclose(passfile);
     std::cout << "entry: " << entry << std::endl;
     
@@ -394,12 +400,12 @@ int check_pass_valid(char *username, char *try_cstr) {
 
     std::string try_pass(try_cstr);
     std::string try_hash(crypt(try_pass.c_str(), old_salt.c_str()));
-    std::cout << "encrypted: " << try_hash << std::endl;
+    std::cout << "try pass encrypted w old salt: " << try_hash << std::endl;
 
-    int match = old_hash == try_hash;
+    int match = (strcmp(old_hash.c_str(), try_hash.c_str()) == 0);
     std::cout << "match is " << match << std::endl;
 
-    return match == 0;
+    return match;
 }
 
 /* changes the user's password by putting a new hash in their file */
@@ -638,17 +644,16 @@ int main()
 	    // Now that we have the Username and Password, we need to verify that
 	    // the credentials are correct. This happens for BOTH GETCERT and CHANGEPW.
   
-            int passwordOk = check_pass_valid(username, plain_pass);
+            int passwordOk = check_pass_valid(username, password);
 	    printf("PASSWORD OK? %d\n", passwordOk);
 	    
-	    //
-	    // TODO FOR MIA: If passwords do not match:
-	    /*
+	    // If passwords do not match, return error
+            if (!passwordOk) {
 		char error[1000];
 		snprintf(error, strlen("Incorrect password") + 1, "Incorrect password");
 		handle_error(client_ctx, error);
 		continue;
-	    */
+	    }
 
 	    // If CHANGEPW, then save the new password into users/<username>/password.txt 
 	    // Execute the shell script: save-password.sh (which takes in username + password)
