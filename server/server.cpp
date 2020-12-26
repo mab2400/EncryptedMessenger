@@ -373,12 +373,9 @@ void handle_one_msg_client(BIO *clnt)
 /* returns a boolean -- true if matches, false otherwise */ 
 int check_pass_valid(char *username, char *try_cstr) {
 
-    std::cout << "user tried password: " << try_cstr << std::endl;
-    
     // retrieve password entry
     char passfilename[256];
     snprintf(passfilename, sizeof(passfilename), "users/%s/password.txt", username);
-    std::cout << "passfilename: " << passfilename << std::endl;
 
     FILE *passfile = fopen(passfilename, "r");
     char entry[4096];
@@ -387,37 +384,29 @@ int check_pass_valid(char *username, char *try_cstr) {
         entry[strlen(entry) - 1] = '\0';
     }
     fclose(passfile);
-    std::cout << "entry: " << entry << std::endl;
     
     std::string old_hash(entry);
 
     // check hash
     size_t old_salt_len = old_hash.find_last_of('$');
-    std::cout << "salt len: " <<  old_salt_len << std::endl;
 
     std::string old_salt = old_hash.substr(0, old_salt_len);
-    std::cout << "old salt: " << old_salt << std::endl;
 
     std::string try_pass(try_cstr);
     std::string try_hash(crypt(try_pass.c_str(), old_salt.c_str()));
-    std::cout << "try pass encrypted w old salt: " << try_hash << std::endl;
 
     int match = (strcmp(old_hash.c_str(), try_hash.c_str()) == 0);
-    std::cout << "match is " << match << std::endl;
 
     return match;
 }
 
 /* changes the user's password by putting a new hash in their file */
 int replace_pass(char *username, char *new_pass) {
-    std::cout << "string to encrypt: " << new_pass << std::endl;
 
     char saltbuf[256];
     char *new_salt = crypt_gensalt_rn(NULL, 0, NULL, 0, saltbuf, sizeof(saltbuf));
-    std::cout << "generated salt: " << new_salt << std::endl;
     
     char *new_hash = crypt(new_pass, new_salt);
-    std::cout << "encrypted: " << new_hash << std::endl;
    
     char passfilename[256];
     snprintf(passfilename, sizeof(passfilename), "users/%s/password.txt", username);
