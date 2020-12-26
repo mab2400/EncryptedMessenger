@@ -1,13 +1,13 @@
 #!/bin/bash
 
-rm hi.txt
-rm .newmsg.txt
-rm newmsg.txt
-rm addleness-both.pem
-rm addleness-cert.pem
-rm addleness-priv.key.pem
-rm addleness-new-cert.pem
-rm unrosed-both.pem
-rm unrosed-cert.pem
-rm unrosed-priv.key.pem
+rm -f hi.txt
+rm -f .newmsg.txt
+rm -f newmsg.txt
+rm -f addleness-both.pem
+rm -f addleness-cert.pem
+rm -f addleness-priv.key.pem
+rm -f addleness-new-cert.pem
+rm -f unrosed-both.pem
+rm -f unrosed-cert.pem
+rm -f unrosed-priv.key.pem
 
